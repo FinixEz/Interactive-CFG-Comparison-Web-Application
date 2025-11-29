@@ -20,5 +20,4 @@ test:                           # @test
 	add	rsp, 16
 	pop	rbp
 	ret
-.Lstr:
-	.asciz	"Count: %d\n"
+
