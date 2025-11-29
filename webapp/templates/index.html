@@ -11,7 +11,7 @@
     <div class="container">
         <header class="header">
             <h1>Graph Similarity Visualizer</h1>
-            <p class="subtitle">Compare two Control Flow Graphs and visualize their differences</p>
+            <p class="subtitle">Compare two Control Flow Graphs (JSON or Assembly) and visualize their differences</p>
         </header>
 
         <!-- Flash Messages -->
@@ -35,18 +35,18 @@
                     <div class="file-input-wrapper">
                         <label for="graph1" class="file-label">
                             <span class="file-icon">📄</span>
-                            <span class="file-text">Graph 1 (JSON)</span>
+                            <span class="file-text">Graph 1 (JSON/Assembly)</span>
                         </label>
-                        <input type="file" name="graph1" id="graph1" accept=".json" required>
+                        <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required>
                         <span class="file-name" id="filename1">No file chosen</span>
                     </div>
 
                     <div class="file-input-wrapper">
                         <label for="graph2" class="file-label">
                             <span class="file-icon">📄</span>
-                            <span class="file-text">Graph 2 (JSON)</span>
+                            <span class="file-text">Graph 2 (JSON/Assembly)</span>
                         </label>
-                        <input type="file" name="graph2" id="graph2" accept=".json" required>
+                        <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required>
                         <span class="file-name" id="filename2">No file chosen</span>
                     </div>
                 </div>

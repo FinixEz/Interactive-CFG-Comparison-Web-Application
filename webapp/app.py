@@ -1,16 +1,18 @@
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from visualize_compare import load_cfg_json, compare_graphs, add_legend_to_html
+from asm_parser import parse_assembly_file
 from pyvis.network import Network
 from werkzeug.utils import secure_filename
 import tempfile
 import os
 import logging
+import json
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Required for flash messages
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads'
-ALLOWED_EXTENSIONS = {'json'}
+ALLOWED_EXTENSIONS = {'json', 's', 'asm'}
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,10 +28,32 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def detect_file_type(filepath):
+    """Detect if file is JSON or assembly based on extension"""
+    ext = filepath.rsplit('.', 1)[1].lower() if '.' in filepath else ''
+    if ext == 'json':
+        return 'json'
+    elif ext in ['s', 'asm']:
+        return 'assembly'
+    return 'unknown'
+
+
+def load_graph_from_file(filepath):
+    """Load graph from either JSON or assembly file"""
+    file_type = detect_file_type(filepath)
+    
+    if file_type == 'json':
+        return load_cfg_json(filepath)
+    elif file_type == 'assembly':
+        return parse_assembly_file(filepath)
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
+
+
 def validate_graph_file(filepath):
-    """Validate that the file is a valid graph JSON"""
+    """Validate that the file is a valid graph (JSON or assembly)"""
     try:
-        graph = load_cfg_json(filepath)
+        graph = load_graph_from_file(filepath)
         if graph is None or len(graph.nodes()) == 0:
             return False, "Graph file is empty or invalid"
         return True, None
@@ -117,9 +141,9 @@ def index():
 def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1", filename2="Graph 2"):
     """Process and visualize graph comparison"""
     try:
-        # Load the graphs
-        G1 = load_cfg_json(graph1_path)
-        G2 = load_cfg_json(graph2_path)
+        # Load the graphs (supports both JSON and assembly)
+        G1 = load_graph_from_file(graph1_path)
+        G2 = load_graph_from_file(graph2_path)
         
         if G1 is None or G2 is None:
             flash("Error loading graph files", "error")

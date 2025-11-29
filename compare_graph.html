@@ -1,0 +1,266 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+             #loadingBar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width: 100%;
+                 height: 600px;
+                 background-color:rgba(200,200,200,0.8);
+                 -webkit-transition: all 0.5s ease;
+                 -moz-transition: all 0.5s ease;
+                 -ms-transition: all 0.5s ease;
+                 -o-transition: all 0.5s ease;
+                 transition: all 0.5s ease;
+                 opacity:1;
+             }
+
+             #bar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width:20px;
+                 height:20px;
+                 margin:auto auto auto auto;
+                 border-radius:11px;
+                 border:2px solid rgba(30,30,30,0.05);
+                 background: rgb(0, 173, 246); /* Old browsers */
+                 box-shadow: 2px 0px 4px rgba(0,0,0,0.4);
+             }
+
+             #border {
+                 position:absolute;
+                 top:10px;
+                 left:10px;
+                 width:500px;
+                 height:23px;
+                 margin:auto auto auto auto;
+                 box-shadow: 0px 0px 4px rgba(0,0,0,0.2);
+                 border-radius:10px;
+             }
+
+             #text {
+                 position:absolute;
+                 top:8px;
+                 left:530px;
+                 width:30px;
+                 height:50px;
+                 margin:auto auto auto auto;
+                 font-size:22px;
+                 color: #000000;
+             }
+
+             div.outerBorder {
+                 position:relative;
+                 top:400px;
+                 width:600px;
+                 height:44px;
+                 margin:auto auto auto auto;
+                 border:8px solid rgba(0,0,0,0.1);
+                 background: rgb(252,252,252); /* Old browsers */
+                 background: -moz-linear-gradient(top,  rgba(252,252,252,1) 0%, rgba(237,237,237,1) 100%); /* FF3.6+ */
+                 background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(252,252,252,1)), color-stop(100%,rgba(237,237,237,1))); /* Chrome,Safari4+ */
+                 background: -webkit-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Chrome10+,Safari5.1+ */
+                 background: -o-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Opera 11.10+ */
+                 background: -ms-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* IE10+ */
+                 background: linear-gradient(to bottom,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* W3C */
+                 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfcfc', endColorstr='#ededed',GradientType=0 ); /* IE6-9 */
+                 border-radius:72px;
+                 box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+             }
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+            <div id="loadingBar">
+              <div class="outerBorder">
+                <div id="text">0%</div>
+                <div id="border">
+                  <div id="bar"></div>
+                </div>
+              </div>
+            </div>
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "red", "id": "\u003cCFGNode 0x140004000[10]\u003e", "label": "\u003cCFGNode 0x140004000[10]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400040d6[52]\u003e", "label": "\u003cCFGNode 0x1400040d6[52]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode UnresolvableCallTarget [0]\u003e", "label": "\u003cCFGNode UnresolvableCallTarget [0]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000410a[17]\u003e", "label": "\u003cCFGNode 0x14000410a[17]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000411b[32]\u003e", "label": "\u003cCFGNode 0x14000411b[32]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000413b[21]\u003e", "label": "\u003cCFGNode 0x14000413b[21]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000415e[25]\u003e", "label": "\u003cCFGNode 0x14000415e[25]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000413e[18]\u003e", "label": "\u003cCFGNode 0x14000413e[18]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400041f1[13]\u003e", "label": "\u003cCFGNode 0x1400041f1[13]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400041d1[10]\u003e", "label": "\u003cCFGNode 0x1400041d1[10]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000417c[32]\u003e", "label": "\u003cCFGNode 0x14000417c[32]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000419c[26]\u003e", "label": "\u003cCFGNode 0x14000419c[26]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400041bb[22]\u003e", "label": "\u003cCFGNode 0x1400041bb[22]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400041a2[20]\u003e", "label": "\u003cCFGNode 0x1400041a2[20]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode UnresolvableJumpTarget [0]\u003e", "label": "\u003cCFGNode UnresolvableJumpTarget [0]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000400a[43]\u003e", "label": "\u003cCFGNode 0x14000400a[43]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004037[9]\u003e", "label": "\u003cCFGNode 0x140004037[9]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004035[11]\u003e", "label": "\u003cCFGNode 0x140004035[11]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000402d[8]\u003e", "label": "\u003cCFGNode 0x14000402d[8]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004040[25]\u003e", "label": "\u003cCFGNode 0x140004040[25]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004059[11]\u003e", "label": "\u003cCFGNode 0x140004059[11]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400040cb[11]\u003e", "label": "\u003cCFGNode 0x1400040cb[11]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004064[16]\u003e", "label": "\u003cCFGNode 0x140004064[16]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004021[20]\u003e", "label": "\u003cCFGNode 0x140004021[20]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x1400040ca[12]\u003e", "label": "\u003cCFGNode 0x1400040ca[12]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004074[28]\u003e", "label": "\u003cCFGNode 0x140004074[28]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004090[10]\u003e", "label": "\u003cCFGNode 0x140004090[10]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004081[15]\u003e", "label": "\u003cCFGNode 0x140004081[15]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x14000409a[48]\u003e", "label": "\u003cCFGNode 0x14000409a[48]\u003e", "shape": "dot"}, {"color": "red", "id": "\u003cCFGNode 0x140004072[2]\u003e", "label": "\u003cCFGNode 0x140004072[2]\u003e", "shape": "dot"}, {"color": "blue", "id": "0x10", "label": "0x10", "shape": "dot"}, {"color": "blue", "id": "0x20", "label": "0x20", "shape": "dot"}, {"color": "blue", "id": "0x30", "label": "0x30", "shape": "dot"}, {"color": "blue", "id": "0x40", "label": "0x40", "shape": "dot"}, {"color": "blue", "id": "0x50", "label": "0x50", "shape": "dot"}, {"color": "blue", "id": "0x60", "label": "0x60", "shape": "dot"}, {"color": "blue", "id": "0x70", "label": "0x70", "shape": "dot"}, {"color": "blue", "id": "0x80", "label": "0x80", "shape": "dot"}, {"color": "blue", "id": "0x90", "label": "0x90", "shape": "dot"}, {"color": "blue", "id": "0xa0", "label": "0xa0", "shape": "dot"}, {"color": "blue", "id": "0xb0", "label": "0xb0", "shape": "dot"}, {"color": "blue", "id": "0xc0", "label": "0xc0", "shape": "dot"}, {"color": "blue", "id": "0xd0", "label": "0xd0", "shape": "dot"}, {"color": "blue", "id": "0xe0", "label": "0xe0", "shape": "dot"}, {"color": "blue", "id": "0xf0", "label": "0xf0", "shape": "dot"}, {"color": "blue", "id": "0x100", "label": "0x100", "shape": "dot"}, {"color": "blue", "id": "0x110", "label": "0x110", "shape": "dot"}, {"color": "blue", "id": "0x120", "label": "0x120", "shape": "dot"}, {"color": "blue", "id": "0x130", "label": "0x130", "shape": "dot"}, {"color": "blue", "id": "0x140", "label": "0x140", "shape": "dot"}, {"color": "blue", "id": "0x150", "label": "0x150", "shape": "dot"}, {"color": "blue", "id": "0x160", "label": "0x160", "shape": "dot"}, {"color": "blue", "id": "0x170", "label": "0x170", "shape": "dot"}, {"color": "blue", "id": "0x180", "label": "0x180", "shape": "dot"}, {"color": "blue", "id": "0x190", "label": "0x190", "shape": "dot"}, {"color": "blue", "id": "0x1a0", "label": "0x1a0", "shape": "dot"}, {"color": "blue", "id": "0x1b0", "label": "0x1b0", "shape": "dot"}, {"color": "blue", "id": "0x1c0", "label": "0x1c0", "shape": "dot"}, {"color": "blue", "id": "0x1d0", "label": "0x1d0", "shape": "dot"}, {"color": "blue", "id": "0x1e0", "label": "0x1e0", "shape": "dot"}, {"color": "blue", "id": "0x1f0", "label": "0x1f0", "shape": "dot"}, {"color": "blue", "id": "0x200", "label": "0x200", "shape": "dot"}, {"color": "blue", "id": "0x210", "label": "0x210", "shape": "dot"}, {"color": "blue", "id": "0x220", "label": "0x220", "shape": "dot"}, {"color": "blue", "id": "0x230", "label": "0x230", "shape": "dot"}, {"color": "blue", "id": "0x240", "label": "0x240", "shape": "dot"}, {"color": "blue", "id": "0x250", "label": "0x250", "shape": "dot"}, {"color": "blue", "id": "0x260", "label": "0x260", "shape": "dot"}, {"color": "blue", "id": "0x270", "label": "0x270", "shape": "dot"}, {"color": "blue", "id": "0x280", "label": "0x280", "shape": "dot"}, {"color": "blue", "id": "0x290", "label": "0x290", "shape": "dot"}, {"color": "blue", "id": "0x2a0", "label": "0x2a0", "shape": "dot"}, {"color": "blue", "id": "0x2b0", "label": "0x2b0", "shape": "dot"}, {"color": "blue", "id": "0x2c0", "label": "0x2c0", "shape": "dot"}, {"color": "blue", "id": "0x2d0", "label": "0x2d0", "shape": "dot"}, {"color": "blue", "id": "0x2e0", "label": "0x2e0", "shape": "dot"}, {"color": "blue", "id": "0x2f0", "label": "0x2f0", "shape": "dot"}, {"color": "blue", "id": "0x300", "label": "0x300", "shape": "dot"}, {"color": "blue", "id": "0x310", "label": "0x310", "shape": "dot"}, {"color": "blue", "id": "0x320", "label": "0x320", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004150[4]\u003e", "label": "\u003cCFGNode 0x140004150[4]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004154[5]\u003e", "label": "\u003cCFGNode 0x140004154[5]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004159[5]\u003e", "label": "\u003cCFGNode 0x140004159[5]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004177[5]\u003e", "label": "\u003cCFGNode 0x140004177[5]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x1400041b6[5]\u003e", "label": "\u003cCFGNode 0x1400041b6[5]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x1400041e3[11]\u003e", "label": "\u003cCFGNode 0x1400041e3[11]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x1400041ee[3]\u003e", "label": "\u003cCFGNode 0x1400041ee[3]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x1400041db[8]\u003e", "label": "\u003cCFGNode 0x1400041db[8]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x14000411f[28]\u003e", "label": "\u003cCFGNode 0x14000411f[28]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140001000[33]\u003e", "label": "\u003cCFGNode 0x140001000[33]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140002048[6]\u003e", "label": "\u003cCFGNode 0x140002048[6]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode VirtualAlloc [0]\u003e", "label": "\u003cCFGNode VirtualAlloc [0]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140001021[22]\u003e", "label": "\u003cCFGNode 0x140001021[22]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140001037[2]\u003e", "label": "\u003cCFGNode 0x140001037[2]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140001035[2]\u003e", "label": "\u003cCFGNode 0x140001035[2]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140001039[8]\u003e", "label": "\u003cCFGNode 0x140001039[8]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140002042[6]\u003e", "label": "\u003cCFGNode 0x140002042[6]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode ExitProcess [0]\u003e", "label": "\u003cCFGNode ExitProcess [0]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x14000425e[7]\u003e", "label": "\u003cCFGNode 0x14000425e[7]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004265[2]\u003e", "label": "\u003cCFGNode 0x140004265[2]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x140004268[3]\u003e", "label": "\u003cCFGNode 0x140004268[3]\u003e", "shape": "dot"}, {"color": "green", "id": "\u003cCFGNode 0x14000426b[12]\u003e", "label": "\u003cCFGNode 0x14000426b[12]\u003e", "shape": "dot"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004000[10]\u003e", "to": "\u003cCFGNode 0x1400040d6[52]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004000[10]\u003e", "to": "\u003cCFGNode 0x14000400a[43]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400040d6[52]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400040d6[52]\u003e", "to": "\u003cCFGNode 0x14000410a[17]\u003e"}, {"arrows": "to", "color": "blue", "from": "\u003cCFGNode UnresolvableCallTarget [0]\u003e", "to": "0x10"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000410a[17]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000410a[17]\u003e", "to": "\u003cCFGNode 0x14000411b[32]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000411b[32]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000411b[32]\u003e", "to": "\u003cCFGNode 0x14000413b[21]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000413b[21]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000413b[21]\u003e", "to": "\u003cCFGNode 0x140004150[4]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000415e[25]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000415e[25]\u003e", "to": "\u003cCFGNode 0x140004177[5]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000413e[18]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000413e[18]\u003e", "to": "\u003cCFGNode 0x140004150[4]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400041f1[13]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400041d1[10]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041d1[10]\u003e", "to": "\u003cCFGNode 0x1400041db[8]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000417c[32]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000417c[32]\u003e", "to": "\u003cCFGNode 0x14000419c[26]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000419c[26]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000419c[26]\u003e", "to": "\u003cCFGNode 0x1400041b6[5]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400041bb[22]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400041bb[22]\u003e", "to": "\u003cCFGNode 0x1400041d1[10]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400041a2[20]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041a2[20]\u003e", "to": "\u003cCFGNode 0x1400041b6[5]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000400a[43]\u003e", "to": "\u003cCFGNode 0x140004037[9]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000400a[43]\u003e", "to": "\u003cCFGNode 0x140004035[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004037[9]\u003e", "to": "\u003cCFGNode 0x14000402d[8]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004037[9]\u003e", "to": "\u003cCFGNode 0x140004040[25]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004035[11]\u003e", "to": "\u003cCFGNode 0x14000402d[8]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004035[11]\u003e", "to": "\u003cCFGNode 0x140004040[25]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000402d[8]\u003e", "to": "\u003cCFGNode 0x140004037[9]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000402d[8]\u003e", "to": "\u003cCFGNode 0x140004035[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004040[25]\u003e", "to": "\u003cCFGNode 0x140004059[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004040[25]\u003e", "to": "\u003cCFGNode 0x1400040cb[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004059[11]\u003e", "to": "\u003cCFGNode 0x1400040cb[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004059[11]\u003e", "to": "\u003cCFGNode 0x140004064[16]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400040cb[11]\u003e", "to": "\u003cCFGNode 0x140004021[20]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004064[16]\u003e", "to": "\u003cCFGNode 0x1400040ca[12]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004064[16]\u003e", "to": "\u003cCFGNode 0x140004074[28]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004021[20]\u003e", "to": "\u003cCFGNode 0x140004037[9]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004021[20]\u003e", "to": "\u003cCFGNode 0x140004035[11]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x1400040ca[12]\u003e", "to": "\u003cCFGNode 0x140004021[20]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004074[28]\u003e", "to": "\u003cCFGNode 0x140004090[10]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004074[28]\u003e", "to": "\u003cCFGNode 0x140004081[15]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004090[10]\u003e", "to": "\u003cCFGNode 0x14000409a[48]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004090[10]\u003e", "to": "\u003cCFGNode 0x140004072[2]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004081[15]\u003e", "to": "\u003cCFGNode 0x140004090[10]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004081[15]\u003e", "to": "\u003cCFGNode 0x140004081[15]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x14000409a[48]\u003e", "to": "\u003cCFGNode UnresolvableJumpTarget [0]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004072[2]\u003e", "to": "\u003cCFGNode 0x1400040ca[12]\u003e"}, {"arrows": "to", "color": "red", "from": "\u003cCFGNode 0x140004072[2]\u003e", "to": "\u003cCFGNode 0x140004074[28]\u003e"}, {"arrows": "to", "color": "blue", "from": "0x10", "to": "0x20"}, {"arrows": "to", "color": "blue", "from": "0x10", "to": "0x2b0"}, {"arrows": "to", "color": "blue", "from": "0x20", "to": "0x30"}, {"arrows": "to", "color": "blue", "from": "0x30", "to": "0x40"}, {"arrows": "to", "color": "blue", "from": "0x40", "to": "0x50"}, {"arrows": "to", "color": "blue", "from": "0x50", "to": "0x60"}, {"arrows": "to", "color": "blue", "from": "0x50", "to": "0xf0"}, {"arrows": "to", "color": "blue", "from": "0x60", "to": "0x70"}, {"arrows": "to", "color": "blue", "from": "0x70", "to": "0x80"}, {"arrows": "to", "color": "blue", "from": "0x70", "to": "0x160"}, {"arrows": "to", "color": "blue", "from": "0x80", "to": "0x90"}, {"arrows": "to", "color": "blue", "from": "0x90", "to": "0xa0"}, {"arrows": "to", "color": "blue", "from": "0x90", "to": "0x180"}, {"arrows": "to", "color": "blue", "from": "0xa0", "to": "0xb0"}, {"arrows": "to", "color": "blue", "from": "0xa0", "to": "0x230"}, {"arrows": "to", "color": "blue", "from": "0xb0", "to": "0xc0"}, {"arrows": "to", "color": "blue", "from": "0xc0", "to": "0xd0"}, {"arrows": "to", "color": "blue", "from": "0xd0", "to": "0xe0"}, {"arrows": "to", "color": "blue", "from": "0xe0", "to": "0xf0"}, {"arrows": "to", "color": "blue", "from": "0xe0", "to": "0x230"}, {"arrows": "to", "color": "blue", "from": "0xf0", "to": "0x100"}, {"arrows": "to", "color": "blue", "from": "0x100", "to": "0x110"}, {"arrows": "to", "color": "blue", "from": "0x110", "to": "0x120"}, {"arrows": "to", "color": "blue", "from": "0x120", "to": "0x130"}, {"arrows": "to", "color": "blue", "from": "0x130", "to": "0x140"}, {"arrows": "to", "color": "blue", "from": "0x140", "to": "0x150"}, {"arrows": "to", "color": "blue", "from": "0x140", "to": "0x2f0"}, {"arrows": "to", "color": "blue", "from": "0x150", "to": "0x160"}, {"arrows": "to", "color": "blue", "from": "0x160", "to": "0x170"}, {"arrows": "to", "color": "blue", "from": "0x170", "to": "0x180"}, {"arrows": "to", "color": "blue", "from": "0x180", "to": "0x190"}, {"arrows": "to", "color": "blue", "from": "0x180", "to": "0x2e0"}, {"arrows": "to", "color": "blue", "from": "0x190", "to": "0x1a0"}, {"arrows": "to", "color": "blue", "from": "0x1a0", "to": "0x1b0"}, {"arrows": "to", "color": "blue", "from": "0x1b0", "to": "0x1c0"}, {"arrows": "to", "color": "blue", "from": "0x1c0", "to": "0x1d0"}, {"arrows": "to", "color": "blue", "from": "0x1d0", "to": "0x1e0"}, {"arrows": "to", "color": "blue", "from": "0x1e0", "to": "0x1f0"}, {"arrows": "to", "color": "blue", "from": "0x1f0", "to": "0x200"}, {"arrows": "to", "color": "blue", "from": "0x200", "to": "0x210"}, {"arrows": "to", "color": "blue", "from": "0x200", "to": "0x300"}, {"arrows": "to", "color": "blue", "from": "0x210", "to": "0x220"}, {"arrows": "to", "color": "blue", "from": "0x220", "to": "0x230"}, {"arrows": "to", "color": "blue", "from": "0x230", "to": "0x240"}, {"arrows": "to", "color": "blue", "from": "0x240", "to": "0x250"}, {"arrows": "to", "color": "blue", "from": "0x250", "to": "0x260"}, {"arrows": "to", "color": "blue", "from": "0x260", "to": "0x270"}, {"arrows": "to", "color": "blue", "from": "0x260", "to": "0x290"}, {"arrows": "to", "color": "blue", "from": "0x270", "to": "0x280"}, {"arrows": "to", "color": "blue", "from": "0x280", "to": "0x290"}, {"arrows": "to", "color": "blue", "from": "0x280", "to": "0x310"}, {"arrows": "to", "color": "blue", "from": "0x290", "to": "0x2a0"}, {"arrows": "to", "color": "blue", "from": "0x2a0", "to": "0x2b0"}, {"arrows": "to", "color": "blue", "from": "0x2b0", "to": "0x2c0"}, {"arrows": "to", "color": "blue", "from": "0x2c0", "to": "0x2d0"}, {"arrows": "to", "color": "blue", "from": "0x2d0", "to": "0x2e0"}, {"arrows": "to", "color": "blue", "from": "0x2e0", "to": "0x2f0"}, {"arrows": "to", "color": "blue", "from": "0x2f0", "to": "0x300"}, {"arrows": "to", "color": "blue", "from": "0x300", "to": "0x310"}, {"arrows": "to", "color": "blue", "from": "0x310", "to": "0x320"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004150[4]\u003e", "to": "\u003cCFGNode 0x14000415e[25]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004150[4]\u003e", "to": "\u003cCFGNode 0x140004154[5]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004154[5]\u003e", "to": "\u003cCFGNode 0x140004159[5]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004154[5]\u003e", "to": "\u003cCFGNode 0x14000413e[18]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004159[5]\u003e", "to": "\u003cCFGNode 0x1400041f1[13]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004159[5]\u003e", "to": "\u003cCFGNode 0x14000415e[25]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004177[5]\u003e", "to": "\u003cCFGNode 0x1400041d1[10]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004177[5]\u003e", "to": "\u003cCFGNode 0x14000417c[32]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041b6[5]\u003e", "to": "\u003cCFGNode 0x1400041bb[22]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041b6[5]\u003e", "to": "\u003cCFGNode 0x1400041e3[11]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041e3[11]\u003e", "to": "\u003cCFGNode 0x1400041ee[3]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041e3[11]\u003e", "to": "\u003cCFGNode 0x1400041a2[20]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041ee[3]\u003e", "to": "\u003cCFGNode UnresolvableJumpTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x1400041db[8]\u003e", "to": "\u003cCFGNode 0x14000411f[28]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000411f[28]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000411f[28]\u003e", "to": "\u003cCFGNode 0x14000413b[21]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001000[33]\u003e", "to": "\u003cCFGNode 0x140002048[6]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001000[33]\u003e", "to": "\u003cCFGNode 0x140001021[22]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140002048[6]\u003e", "to": "\u003cCFGNode VirtualAlloc [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode VirtualAlloc [0]\u003e", "to": "\u003cCFGNode 0x140001021[22]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001021[22]\u003e", "to": "\u003cCFGNode 0x140001037[2]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001021[22]\u003e", "to": "\u003cCFGNode 0x140001035[2]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001037[2]\u003e", "to": "\u003cCFGNode UnresolvableCallTarget [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001037[2]\u003e", "to": "\u003cCFGNode 0x140001039[8]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001035[2]\u003e", "to": "\u003cCFGNode 0x140001037[2]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001035[2]\u003e", "to": "\u003cCFGNode 0x140001035[2]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140001039[8]\u003e", "to": "\u003cCFGNode 0x140002042[6]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140002042[6]\u003e", "to": "\u003cCFGNode ExitProcess [0]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x14000425e[7]\u003e", "to": "\u003cCFGNode 0x140004265[2]\u003e"}, {"arrows": "to", "color": "green", "from": "\u003cCFGNode 0x140004268[3]\u003e", "to": "\u003cCFGNode 0x14000426b[12]\u003e"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+                      network.on("stabilizationProgress", function(params) {
+                          document.getElementById('loadingBar').removeAttribute("style");
+                          var maxWidth = 496;
+                          var minWidth = 20;
+                          var widthFactor = params.iterations/params.total;
+                          var width = Math.max(minWidth,maxWidth * widthFactor);
+                          document.getElementById('bar').style.width = width + 'px';
+                          document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+                      });
+                      network.once("stabilizationIterationsDone", function() {
+                          document.getElementById('text').innerHTML = '100%';
+                          document.getElementById('bar').style.width = '496px';
+                          document.getElementById('loadingBar').style.opacity = 0;
+                          // really clean the dom element
+                          setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+                      });
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    
+    <div style="
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: white;
+        padding: 10px;
+        border: 1px solid black;
+        font-family: Arial;
+        font-size: 14px;
+        z-index: 9999;">
+        <b>Legend:</b><br>
+        <span style="color: red;">&#9679;</span> Shared nodes/edges (both files)<br>
+        <span style="color: blue;">&#9679;</span> Nodes/edges unique to mocking.json<br>
+        <span style="color: green;">&#9679;</span> Nodes/edges unique to Bodmasv2.json<br>
+    </div>
+    </body>
+</html>
