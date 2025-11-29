@@ -138,6 +138,60 @@ def index():
     return render_template("index.html", visualized=False)
 
 
+@app.route("/inspect", methods=["GET", "POST"])
+def inspect():
+    """Assembly inspector page with real-time CFG visualization"""
+    if request.method == "POST":
+        # Check if using sample data
+        if 'sample' in request.form:
+            # Load sample assembly file
+            try:
+                with open("static/test.s", 'r') as f:
+                    asm_content = f.read()
+                return render_template("inspector.html", 
+                                     assembly_code=asm_content,
+                                     filename="test.s")
+            except Exception as e:
+                flash(f"Error loading sample file: {str(e)}", "error")
+                return render_template("inspector.html")
+        
+        # Handle file upload
+        if 'assembly_file' not in request.files:
+            flash("Please upload an assembly file", "error")
+            return render_template("inspector.html")
+        
+        asm_file = request.files['assembly_file']
+        
+        if asm_file.filename == '':
+            flash("Please select an assembly file", "error")
+            return render_template("inspector.html")
+        
+        # Validate file extension
+        if not allowed_file(asm_file.filename):
+            flash("Only assembly files (.s, .asm) and JSON files are allowed", "error")
+            return render_template("inspector.html")
+        
+        try:
+            # Read assembly content
+            asm_content = asm_file.read().decode('utf-8')
+            
+            # Check file size (warn if >5MB)
+            file_size_mb = len(asm_content) / (1024 * 1024)
+            if file_size_mb > 5:
+                flash(f"Warning: Large file ({file_size_mb:.1f}MB) may take time to parse", "warning")
+            
+            return render_template("inspector.html", 
+                                 assembly_code=asm_content,
+                                 filename=asm_file.filename,
+                                 file_size_mb=file_size_mb)
+        except Exception as e:
+            logger.error(f"Error reading assembly file: {str(e)}")
+            flash(f"Error reading file: {str(e)}", "error")
+            return render_template("inspector.html")
+    
+    return render_template("inspector.html")
+
+
 def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1", filename2="Graph 2"):
     """Process and visualize graph comparison"""
     try:

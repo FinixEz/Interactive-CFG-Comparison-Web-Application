@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,25 +8,30 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="container">
         <header class="header">
             <h1>Graph Similarity Visualizer</h1>
             <p class="subtitle">Compare two Control Flow Graphs (JSON or Assembly) and visualize their differences</p>
+            <div style="margin-top: 0.5rem;">
+                <a href="/inspect" style="color: #667eea; text-decoration: none; font-weight: 500;">🔍 Try Assembly
+                    Inspector →</a>
+            </div>
         </header>
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <span class="alert-icon">
-                            {% if category == 'success' %}✓{% else %}⚠{% endif %}
-                        </span>
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+            <span class="alert-icon">
+                {% if category == 'success' %}✓{% else %}⚠{% endif %}
+            </span>
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
 
         <!-- Upload Form -->
@@ -64,86 +70,85 @@
             </form>
         </div>
 
-<!-- Statistics Display -->
-{% if stats %}
-<div class="stats-section">
-    <h2>Comparison Statistics</h2>
-    <div class="comparison-header">
-        <div class="file-badge">📄 {{ stats.filename1 }}</div>
-        <div class="vs-divider">VS</div>
-        <div class="file-badge">📄 {{ stats.filename2 }}</div>
-    </div>
-    
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.g1_nodes }}</div>
-            <div class="stat-label">{{ stats.filename1 }} Nodes</div>
+        <!-- Statistics Display -->
+        {% if stats %}
+        <div class="stats-section">
+            <h2>Comparison Statistics</h2>
+            <div class="comparison-header">
+                <div class="file-badge">📄 {{ stats.filename1 }}</div>
+                <div class="vs-divider">VS</div>
+                <div class="file-badge">📄 {{ stats.filename2 }}</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.g1_nodes }}</div>
+                    <div class="stat-label">{{ stats.filename1 }} Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.g2_nodes }}</div>
+                    <div class="stat-label">{{ stats.filename2 }} Nodes</div>
+                </div>
+                <div class="stat-card highlight">
+                    <div class="stat-value">{{ stats.common_nodes }}</div>
+                    <div class="stat-label">Common Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.g1_edges }}</div>
+                    <div class="stat-label">{{ stats.filename1 }} Edges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.g2_edges }}</div>
+                    <div class="stat-label">{{ stats.filename2 }} Edges</div>
+                </div>
+                <div class="stat-card highlight">
+                    <div class="stat-value">{{ stats.common_edges }}</div>
+                    <div class="stat-label">Common Edges</div>
+                </div>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.g2_nodes }}</div>
-            <div class="stat-label">{{ stats.filename2 }} Nodes</div>
-        </div>
-        <div class="stat-card highlight">
-            <div class="stat-value">{{ stats.common_nodes }}</div>
-            <div class="stat-label">Common Nodes</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.g1_edges }}</div>
-            <div class="stat-label">{{ stats.filename1 }} Edges</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.g2_edges }}</div>
-            <div class="stat-label">{{ stats.filename2 }} Edges</div>
-        </div>
-        <div class="stat-card highlight">
-            <div class="stat-value">{{ stats.common_edges }}</div>
-            <div class="stat-label">Common Edges</div>
-        </div>
-    </div>
-</div>
-{% endif %}
+        {% endif %}
 
 
-       <!-- Visualization Display -->
-{% if visualized %}
-<div class="visualization-section">
-    <h2>{{ stats.filename1 }} vs {{ stats.filename2 }}</h2>
-    <div class="graph-container">
-        <iframe src="{{ url_for('static', filename='combined_graph.html') }}" 
-                class="graph-iframe"
-                title="Combined Graph Visualization">
-        </iframe>
-    </div>
-            
-           <div class="legend">
-    <h3>Legend</h3>
-    <div class="legend-items">
-        <div class="legend-item">
-            <span class="legend-color" style="background: orange;"></span>
-            <span>Common Nodes</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: lightblue;"></span>
-            <span>{{ stats.filename1 }} Only Nodes</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: lightgreen;"></span>
-            <span>{{ stats.filename2 }} Only Nodes</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: red;"></span>
-            <span>Common Edges</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: blue;"></span>
-            <span>{{ stats.filename1 }} Only Edges</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: green;"></span>
-            <span>{{ stats.filename2 }} Only Edges</span>
-        </div>
-    </div>
-</div>
+        <!-- Visualization Display -->
+        {% if visualized %}
+        <div class="visualization-section">
+            <h2>{{ stats.filename1 }} vs {{ stats.filename2 }}</h2>
+            <div class="graph-container">
+                <iframe src="{{ url_for('static', filename='combined_graph.html') }}" class="graph-iframe"
+                    title="Combined Graph Visualization">
+                </iframe>
+            </div>
+
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: orange;"></span>
+                        <span>Common Nodes</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: lightblue;"></span>
+                        <span>{{ stats.filename1 }} Only Nodes</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: lightgreen;"></span>
+                        <span>{{ stats.filename2 }} Only Nodes</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: red;"></span>
+                        <span>Common Edges</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: blue;"></span>
+                        <span>{{ stats.filename1 }} Only Edges</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: green;"></span>
+                        <span>{{ stats.filename2 }} Only Edges</span>
+                    </div>
+                </div>
+            </div>
 
         </div>
         {% endif %}
@@ -151,13 +156,14 @@
 
     <script>
         // File input display
-        document.getElementById('graph1').addEventListener('change', function(e) {
+        document.getElementById('graph1').addEventListener('change', function (e) {
             document.getElementById('filename1').textContent = e.target.files[0]?.name || 'No file chosen';
         });
-        
-        document.getElementById('graph2').addEventListener('change', function(e) {
+
+        document.getElementById('graph2').addEventListener('change', function (e) {
             document.getElementById('filename2').textContent = e.target.files[0]?.name || 'No file chosen';
         });
     </script>
 </body>
+
 </html>
