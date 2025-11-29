@@ -1,0 +1,808 @@
+[
+  {
+    "label": "malware",
+    "cfg": {
+      "directed": true,
+      "multigraph": false,
+      "graph": {},
+      "nodes": [
+        {
+          "id": "<CFGNode 0x140004000[10]>"
+        },
+        {
+          "id": "<CFGNode 0x1400040d6[52]>"
+        },
+        {
+          "id": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "id": "<CFGNode 0x14000410a[17]>"
+        },
+        {
+          "id": "<CFGNode 0x14000411b[32]>"
+        },
+        {
+          "id": "<CFGNode 0x14000413b[21]>"
+        },
+        {
+          "id": "<CFGNode 0x140004150[4]>"
+        },
+        {
+          "id": "<CFGNode 0x14000415e[25]>"
+        },
+        {
+          "id": "<CFGNode 0x140004154[5]>"
+        },
+        {
+          "id": "<CFGNode 0x140004159[5]>"
+        },
+        {
+          "id": "<CFGNode 0x14000413e[18]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041f1[13]>"
+        },
+        {
+          "id": "<CFGNode 0x140004177[5]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041d1[10]>"
+        },
+        {
+          "id": "<CFGNode 0x14000417c[32]>"
+        },
+        {
+          "id": "<CFGNode 0x14000419c[26]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041b6[5]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041bb[22]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041e3[11]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041ee[3]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041a2[20]>"
+        },
+        {
+          "id": "<CFGNode UnresolvableJumpTarget [0]>"
+        },
+        {
+          "id": "<CFGNode 0x1400041db[8]>"
+        },
+        {
+          "id": "<CFGNode 0x14000411f[28]>"
+        },
+        {
+          "id": "<CFGNode 0x14000400a[43]>"
+        },
+        {
+          "id": "<CFGNode 0x140004037[9]>"
+        },
+        {
+          "id": "<CFGNode 0x140004035[11]>"
+        },
+        {
+          "id": "<CFGNode 0x14000402d[8]>"
+        },
+        {
+          "id": "<CFGNode 0x140004040[25]>"
+        },
+        {
+          "id": "<CFGNode 0x140004059[11]>"
+        },
+        {
+          "id": "<CFGNode 0x1400040cb[11]>"
+        },
+        {
+          "id": "<CFGNode 0x140004064[16]>"
+        },
+        {
+          "id": "<CFGNode 0x140004021[20]>"
+        },
+        {
+          "id": "<CFGNode 0x1400040ca[12]>"
+        },
+        {
+          "id": "<CFGNode 0x140004074[28]>"
+        },
+        {
+          "id": "<CFGNode 0x140004090[10]>"
+        },
+        {
+          "id": "<CFGNode 0x140004081[15]>"
+        },
+        {
+          "id": "<CFGNode 0x14000409a[48]>"
+        },
+        {
+          "id": "<CFGNode 0x140004072[2]>"
+        },
+        {
+          "id": "<CFGNode 0x140001000[33]>"
+        },
+        {
+          "id": "<CFGNode 0x140002048[6]>"
+        },
+        {
+          "id": "<CFGNode VirtualAlloc [0]>"
+        },
+        {
+          "id": "<CFGNode 0x140001021[22]>"
+        },
+        {
+          "id": "<CFGNode 0x140001037[2]>"
+        },
+        {
+          "id": "<CFGNode 0x140001035[2]>"
+        },
+        {
+          "id": "<CFGNode 0x140001039[8]>"
+        },
+        {
+          "id": "<CFGNode 0x140002042[6]>"
+        },
+        {
+          "id": "<CFGNode ExitProcess [0]>"
+        },
+        {
+          "id": "<CFGNode 0x14000425e[7]>"
+        },
+        {
+          "id": "<CFGNode 0x140004265[2]>"
+        },
+        {
+          "id": "<CFGNode 0x140004268[3]>"
+        },
+        {
+          "id": "<CFGNode 0x14000426b[12]>"
+        }
+      ],
+      "links": [
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725509,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004000[10]>",
+          "target": "<CFGNode 0x1400040d6[52]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725509,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004000[10]>",
+          "target": "<CFGNode 0x14000400a[43]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725768,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400040d6[52]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725768,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400040d6[52]>",
+          "target": "<CFGNode 0x14000410a[17]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725785,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000410a[17]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725785,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000410a[17]>",
+          "target": "<CFGNode 0x14000411b[32]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725817,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000411b[32]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725817,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000411b[32]>",
+          "target": "<CFGNode 0x14000413b[21]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725838,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000413b[21]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725838,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000413b[21]>",
+          "target": "<CFGNode 0x140004150[4]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725842,
+          "stmt_idx": 17,
+          "source": "<CFGNode 0x140004150[4]>",
+          "target": "<CFGNode 0x14000415e[25]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725842,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004150[4]>",
+          "target": "<CFGNode 0x140004154[5]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725877,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000415e[25]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725877,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000415e[25]>",
+          "target": "<CFGNode 0x140004177[5]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725847,
+          "stmt_idx": 17,
+          "source": "<CFGNode 0x140004154[5]>",
+          "target": "<CFGNode 0x140004159[5]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725847,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004154[5]>",
+          "target": "<CFGNode 0x14000413e[18]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725849,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004159[5]>",
+          "target": "<CFGNode 0x1400041f1[13]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725849,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004159[5]>",
+          "target": "<CFGNode 0x14000415e[25]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725838,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000413e[18]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725838,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000413e[18]>",
+          "target": "<CFGNode 0x140004150[4]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368726012,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041f1[13]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725882,
+          "stmt_idx": 18,
+          "source": "<CFGNode 0x140004177[5]>",
+          "target": "<CFGNode 0x1400041d1[10]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725882,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004177[5]>",
+          "target": "<CFGNode 0x14000417c[32]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725977,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041d1[10]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725977,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041d1[10]>",
+          "target": "<CFGNode 0x1400041db[8]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725914,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000417c[32]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725914,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000417c[32]>",
+          "target": "<CFGNode 0x14000419c[26]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725940,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000419c[26]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725940,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000419c[26]>",
+          "target": "<CFGNode 0x1400041b6[5]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725945,
+          "stmt_idx": 18,
+          "source": "<CFGNode 0x1400041b6[5]>",
+          "target": "<CFGNode 0x1400041bb[22]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725945,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041b6[5]>",
+          "target": "<CFGNode 0x1400041e3[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725967,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041bb[22]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725967,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041bb[22]>",
+          "target": "<CFGNode 0x1400041d1[10]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725996,
+          "stmt_idx": 24,
+          "source": "<CFGNode 0x1400041e3[11]>",
+          "target": "<CFGNode 0x1400041ee[3]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725996,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041e3[11]>",
+          "target": "<CFGNode 0x1400041a2[20]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725998,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041ee[3]>",
+          "target": "<CFGNode UnresolvableJumpTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725940,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041a2[20]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725940,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041a2[20]>",
+          "target": "<CFGNode 0x1400041b6[5]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725982,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400041db[8]>",
+          "target": "<CFGNode 0x14000411f[28]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368725817,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000411f[28]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368725817,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000411f[28]>",
+          "target": "<CFGNode 0x14000413b[21]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": 95,
+          "source": "<CFGNode 0x14000400a[43]>",
+          "target": "<CFGNode 0x140004037[9]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000400a[43]>",
+          "target": "<CFGNode 0x140004035[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725566,
+          "stmt_idx": 34,
+          "source": "<CFGNode 0x140004037[9]>",
+          "target": "<CFGNode 0x14000402d[8]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725566,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004037[9]>",
+          "target": "<CFGNode 0x140004040[25]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725566,
+          "stmt_idx": 37,
+          "source": "<CFGNode 0x140004035[11]>",
+          "target": "<CFGNode 0x14000402d[8]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725566,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004035[11]>",
+          "target": "<CFGNode 0x140004040[25]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": 21,
+          "source": "<CFGNode 0x14000402d[8]>",
+          "target": "<CFGNode 0x140004037[9]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000402d[8]>",
+          "target": "<CFGNode 0x140004035[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725587,
+          "stmt_idx": 52,
+          "source": "<CFGNode 0x140004040[25]>",
+          "target": "<CFGNode 0x140004059[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725587,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004040[25]>",
+          "target": "<CFGNode 0x1400040cb[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725602,
+          "stmt_idx": 20,
+          "source": "<CFGNode 0x140004059[11]>",
+          "target": "<CFGNode 0x1400040cb[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725602,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004059[11]>",
+          "target": "<CFGNode 0x140004064[16]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725713,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400040cb[11]>",
+          "target": "<CFGNode 0x140004021[20]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725618,
+          "stmt_idx": 39,
+          "source": "<CFGNode 0x140004064[16]>",
+          "target": "<CFGNode 0x1400040ca[12]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725618,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004064[16]>",
+          "target": "<CFGNode 0x140004074[28]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": 37,
+          "source": "<CFGNode 0x140004021[20]>",
+          "target": "<CFGNode 0x140004037[9]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725555,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004021[20]>",
+          "target": "<CFGNode 0x140004035[11]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725713,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x1400040ca[12]>",
+          "target": "<CFGNode 0x140004021[20]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725646,
+          "stmt_idx": 85,
+          "source": "<CFGNode 0x140004074[28]>",
+          "target": "<CFGNode 0x140004090[10]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725646,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004074[28]>",
+          "target": "<CFGNode 0x140004081[15]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725656,
+          "stmt_idx": 31,
+          "source": "<CFGNode 0x140004090[10]>",
+          "target": "<CFGNode 0x14000409a[48]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725656,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004090[10]>",
+          "target": "<CFGNode 0x140004072[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725646,
+          "stmt_idx": 56,
+          "source": "<CFGNode 0x140004081[15]>",
+          "target": "<CFGNode 0x140004090[10]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725646,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004081[15]>",
+          "target": "<CFGNode 0x140004081[15]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725704,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000409a[48]>",
+          "target": "<CFGNode UnresolvableJumpTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725618,
+          "stmt_idx": 3,
+          "source": "<CFGNode 0x140004072[2]>",
+          "target": "<CFGNode 0x1400040ca[12]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368725618,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140004072[2]>",
+          "target": "<CFGNode 0x140004074[28]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368713244,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001000[33]>",
+          "target": "<CFGNode 0x140002048[6]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368713244,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001000[33]>",
+          "target": "<CFGNode 0x140001021[22]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368717384,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140002048[6]>",
+          "target": "<CFGNode VirtualAlloc [0]>"
+        },
+        {
+          "jumpkind": "Ijk_Ret",
+          "ins_addr": null,
+          "stmt_idx": -2,
+          "source": "<CFGNode VirtualAlloc [0]>",
+          "target": "<CFGNode 0x140001021[22]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368713269,
+          "stmt_idx": 13,
+          "source": "<CFGNode 0x140001021[22]>",
+          "target": "<CFGNode 0x140001037[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368713269,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001021[22]>",
+          "target": "<CFGNode 0x140001035[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368713271,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001037[2]>",
+          "target": "<CFGNode UnresolvableCallTarget [0]>"
+        },
+        {
+          "jumpkind": "Ijk_FakeRet",
+          "ins_addr": 5368713271,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001037[2]>",
+          "target": "<CFGNode 0x140001039[8]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368713269,
+          "stmt_idx": 3,
+          "source": "<CFGNode 0x140001035[2]>",
+          "target": "<CFGNode 0x140001037[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368713269,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001035[2]>",
+          "target": "<CFGNode 0x140001035[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Call",
+          "ins_addr": 5368713276,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140001039[8]>",
+          "target": "<CFGNode 0x140002042[6]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368717378,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x140002042[6]>",
+          "target": "<CFGNode ExitProcess [0]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368726115,
+          "stmt_idx": -2,
+          "source": "<CFGNode 0x14000425e[7]>",
+          "target": "<CFGNode 0x140004265[2]>"
+        },
+        {
+          "jumpkind": "Ijk_Boring",
+          "ins_addr": 5368726120,
+          "stmt_idx": 7,
+          "source": "<CFGNode 0x140004268[3]>",
+          "target": "<CFGNode 0x14000426b[12]>"
+        }
+      ]
+    }
+  },
+  {
+    "label": "legitimate",
+    "cfg": {
+      "directed": true,
+      "multigraph": false,
+      "graph": {},
+      "nodes": [
+        {
+          "addr": 5242880,
+          "size": 20,
+          "ins_count": 6,
+          "function": "main",
+          "type": "normal",
+          "id": 5242880
+        },
+        {
+          "addr": 5242912,
+          "size": 35,
+          "ins_count": 10,
+          "function": "main",
+          "type": "conditional_jump",
+          "id": 5242912
+        },
+        {
+          "addr": 5242960,
+          "size": 25,
+          "ins_count": 7,
+          "function": "helper",
+          "type": "call",
+          "id": 5242960
+        },
+        {
+          "addr": 5242992,
+          "size": 10,
+          "ins_count": 3,
+          "function": "helper",
+          "type": "return",
+          "id": 5242992
+        }
+      ],
+      "links": [
+        {
+          "type": "jmp",
+          "source": 5242880,
+          "target": 5242912
+        },
+        {
+          "type": "conditional_true",
+          "source": 5242912,
+          "target": 5242960
+        },
+        {
+          "type": "conditional_false",
+          "source": 5242912,
+          "target": 5242992
+        },
+        {
+          "type": "call",
+          "source": 5242960,
+          "target": 5242992
+        }
+      ]
+    }
+  }
+]
