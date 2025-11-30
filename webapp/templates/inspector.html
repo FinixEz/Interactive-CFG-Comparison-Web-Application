@@ -313,9 +313,10 @@
                     <span style="opacity: 0.7; margin-left: 1rem;">{{ filename }}</span>
                     {% endif %}
                 </div>
-                <div class="code-content">
+                <div class="code-content" id="code-content">
                     {% if assembly_code %}
-                    <pre class="code-viewer" id="code-viewer">{{ assembly_code }}</pre>
+                    <pre class="code-viewer" id="code-viewer">{% for line in assembly_code.split('\n') %}<span class="code-line" id="line-{{ loop.index0 }}">{{ line }}
+</span>{% endfor %}</pre>
                     {% else %}
                     <div class="empty-state">
                         <div class="empty-state-icon">📝</div>
@@ -328,137 +329,73 @@
             <!-- CFG Panel -->
             <div class="cfg-panel">
                 <div class="panel-header">Control Flow Graph</div>
-                {% if assembly_code %}
-                <div class="function-selector">
-                    <label for="function-select">Function: </label>
-                    <select id="function-select">
-                        <option value="">Loading...</option>
-                    </select>
-                </div>
-                {% endif %}
                 <div class="cfg-content">
                     <div id="cfg-container">
-                        {% if assembly_code %}
-                        <div class="loading">
-                            <div class="loading-spinner"></div>
-                            <p>Parsing assembly and generating CFG...</p>
-                        </div>
+                        {% if cfg_html %}
+                        <iframe src="{{ url_for('static', filename=cfg_html) }}"
+                            style="width: 100%; height: 100%; border: none;"></iframe>
                         {% else %}
                         <div class="empty-state">
                             <div class="empty-state-icon">📊</div>
                             <p>CFG will appear here</p>
+                            {% if assembly_code %}
+                            <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">(Graph generation failed or
+                                not started)</p>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Load asmcfg library from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@marioslab/asmcfg@latest/dist/iife/asmcfg.min.js"></script>
-
-    <script>
-        // File input display
-        document.getElementById('assembly_file').addEventListener('change', function (e) {
-            const fileName = e.target.files[0]?.name || 'No file chosen';
-            document.getElementById('file-name').textContent = fileName;
-        });
-
-        {% if assembly_code %}
-        // Assembly code is loaded, parse and visualize
-        (async function () {
-            try {
-                const assemblyCode = {{ assembly_code| tojson
-            }};
-
-        // Parse assembly code
-        console.log('Parsing assembly code...');
-        const functions = asmcfg.parse(assemblyCode);
-        console.log(`Found ${functions.length} function(s)`);
-
-        if (functions.length === 0) {
-            document.getElementById('cfg-container').innerHTML =
-                '<div class="empty-state"><div class="empty-state-icon">⚠</div><p>No functions found in assembly code</p></div>';
-            return;
-        }
-
-        // Populate function selector
-        const functionSelect = document.getElementById('function-select');
-        functionSelect.innerHTML = '';
-        functions.forEach((func, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = func.name || `Function ${index + 1}`;
-            functionSelect.appendChild(option);
-        });
-
-        // Function to render CFG for a specific function
-        async function renderFunction(funcIndex) {
-            const func = functions[funcIndex];
-            console.log(`Rendering CFG for function: ${func.name}`);
-
-            // Clear container
-            const container = document.getElementById('cfg-container');
-            container.innerHTML = '<svg id="cfg-svg"><g/></svg>';
-
-            const svg = document.getElementById('cfg-svg');
-
-            // Render CFG
-            await asmcfg.renderSvg(func, svg);
-
-            // Make interactive
-            asmcfg.makeInteractive(svg, func, (lineStart, lineEnd, node, funcObj) => {
-                highlightCodeLines(lineStart, lineEnd);
+        <script>
+            // File input display
+            document.getElementById('assembly_file').addEventListener('change', function (e) {
+                const fileName = e.target.files[0]?.name || 'No file chosen';
+                document.getElementById('file-name').textContent = fileName;
             });
 
-            console.log('CFG rendered successfully');
-        }
+            // Listen for messages from CFG iframe (node clicks)
+            window.addEventListener('message', function (event) {
+                // Handle CFG node click events
+                if (event.data && event.data.type === 'cfg_node_click') {
+                    const startLine = event.data.startLine;
+                    const endLine = event.data.endLine;
 
-        // Function to highlight code lines
-        function highlightCodeLines(startLine, endLine) {
-            // Remove previous highlights
-            document.querySelectorAll('.code-line').forEach(line => {
-                line.classList.remove('highlighted');
+                    // Clear previous highlights
+                    const allLines = document.querySelectorAll('.code-line');
+                    allLines.forEach(line => line.classList.remove('highlighted'));
+
+                    // Highlight the relevant lines
+                    if (startLine >= 0 && endLine >= 0) {
+                        for (let i = startLine; i <= endLine; i++) {
+                            const lineElement = document.getElementById('line-' + i);
+                            if (lineElement) {
+                                lineElement.classList.add('highlighted');
+                            }
+                        }
+
+                        // Scroll to the first highlighted line
+                        const firstLine = document.getElementById('line-' + startLine);
+                        if (firstLine) {
+                            const codeContent = document.getElementById('code-content');
+                            if (codeContent) {
+                                // Calculate scroll position to center the highlighted code
+                                const lineOffset = firstLine.offsetTop;
+                                const containerHeight = codeContent.clientHeight;
+                                const scrollPosition = lineOffset - (containerHeight / 3);
+
+                                codeContent.scrollTo({
+                                    top: Math.max(0, scrollPosition),
+                                    behavior: 'smooth'
+                                });
+                            }
+                        }
+                    }
+                }
             });
-
-            // Add line numbers and highlight
-            const codeViewer = document.getElementById('code-viewer');
-            const lines = codeViewer.textContent.split('\n');
-
-            let html = '';
-            lines.forEach((line, index) => {
-                const lineNum = index + 1;
-                const isHighlighted = lineNum >= startLine && lineNum <= endLine;
-                html += `<span class="code-line ${isHighlighted ? 'highlighted' : ''}">${line}\n</span>`;
-            });
-
-            codeViewer.innerHTML = html;
-
-            // Scroll to highlighted line
-            const highlightedLine = document.querySelector('.code-line.highlighted');
-            if (highlightedLine) {
-                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        // Render first function
-        await renderFunction(0);
-
-        // Handle function selection change
-        functionSelect.addEventListener('change', async (e) => {
-            const funcIndex = parseInt(e.target.value);
-            await renderFunction(funcIndex);
-        });
-                
-            } catch (error) {
-            console.error('Error parsing assembly:', error);
-            document.getElementById('cfg-container').innerHTML =
-                `<div class="empty-state"><div class="empty-state-icon">❌</div><p>Error parsing assembly: ${error.message}</p></div>`;
-        }
-        }) ();
-        {% endif %}
-    </script>
+        </script>
 </body>
 
 </html>

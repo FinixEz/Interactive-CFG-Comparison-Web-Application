@@ -61,6 +61,60 @@ def validate_graph_file(filepath):
         return False, f"Invalid graph file: {str(e)}"
 
 
+def inject_cfg_interaction_js(html_path):
+    """
+    Inject JavaScript into PyVis HTML to enable node click interaction.
+    This allows the CFG to communicate with the parent window for code highlighting.
+    """
+    try:
+        with open(html_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # JavaScript to inject - captures node clicks and sends data to parent
+        interaction_js = """
+        <script type="text/javascript">
+        // Add click event listener to network
+        network.on("click", function(params) {
+            if (params.nodes.length > 0) {
+                var nodeId = params.nodes[0];
+                var nodeData = nodes.get(nodeId);
+                
+                // Extract line number data
+                var startLine = nodeData.start_line;
+                var endLine = nodeData.end_line;
+                
+                // Send message to parent window
+                if (window.parent && startLine !== undefined && startLine >= 0) {
+                    window.parent.postMessage({
+                        type: 'cfg_node_click',
+                        nodeId: nodeId,
+                        startLine: startLine,
+                        endLine: endLine
+                    }, '*');
+                }
+            }
+        });
+        </script>
+        """
+        
+        # Inject before closing body tag
+        if '</body>' in html_content:
+            html_content = html_content.replace('</body>', interaction_js + '\n</body>')
+        else:
+            # Fallback: append to end
+            html_content += interaction_js
+        
+        # Write back
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error injecting JavaScript into CFG HTML: {e}")
+        return False
+
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -89,7 +143,7 @@ def index():
         
         # Validate file extensions
         if not (allowed_file(g1_file.filename) and allowed_file(g2_file.filename)):
-            flash("Only JSON files are allowed", "error")
+            flash("Only JSON and assembly files (.json, .s, .asm) are allowed", "error")
             return render_template("index.html", visualized=False)
         
         # Save original filenames before securing them
@@ -146,11 +200,88 @@ def inspect():
         if 'sample' in request.form:
             # Load sample assembly file
             try:
-                with open("static/test.s", 'r') as f:
+                sample_path = "static/test.s"
+                with open(sample_path, 'r') as f:
                     asm_content = f.read()
-                return render_template("inspector.html", 
-                                     assembly_code=asm_content,
-                                     filename="test.s")
+                
+                # Parse assembly and generate CFG for sample
+                try:
+                    G = parse_assembly_file(sample_path)
+                    
+                    # Generate PyVis visualization with hierarchical layout
+                    net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="black", directed=True)
+                    net.from_nx(G)
+                    
+                    # Configure hierarchical layout (waterfall/top-down)
+                    net.set_options("""
+                    {
+                      "layout": {
+                        "hierarchical": {
+                          "enabled": true,
+                          "direction": "UD",
+                          "sortMethod": "directed",
+                          "nodeSpacing": 150,
+                          "levelSeparation": 200,
+                          "treeSpacing": 200
+                        }
+                      },
+                      "physics": {
+                        "enabled": false
+                      },
+                      "edges": {
+                        "smooth": {
+                          "type": "cubicBezier",
+                          "forceDirection": "vertical"
+                        }
+                      }
+                    }
+                    """)
+                    
+                    # Style nodes and edges with line number metadata
+                    for node in net.nodes:
+                        node['color'] = '#97c2fc'
+                        node['shape'] = 'box'
+                        node['font'] = {'face': 'monospace', 'align': 'left'}
+                        
+                        # Add line number metadata from NetworkX graph
+                        node_id = node['id']
+                        if node_id in G.nodes:
+                            node_data = G.nodes[node_id]
+                            start_line = node_data.get('start_line', -1)
+                            end_line = node_data.get('end_line', -1)
+                            
+                            # Add to title for visibility
+                            lines_info = f"Lines {start_line}-{end_line}" if start_line >= 0 else "No line info"
+                            node['title'] = f"{node_id}\n{lines_info}"
+                            
+                            # Store as custom data for JavaScript access
+                            node['start_line'] = start_line
+                            node['end_line'] = end_line
+                        
+                    for edge in net.edges:
+                        edge['color'] = '#848484'
+                        edge['arrows'] = 'to'
+                    
+                    # Save CFG visualization
+                    output_filename = f"cfg_{os.urandom(4).hex()}.html"
+                    output_path = os.path.join('static', output_filename)
+                    net.save_graph(output_path)
+                    
+                    # Inject interactive JavaScript for node clicking
+                    inject_cfg_interaction_js(output_path)
+                    
+                    file_size_mb = len(asm_content) / (1024 * 1024)
+                    return render_template("inspector.html", 
+                                         assembly_code=asm_content,
+                                         filename="test.s",
+                                         file_size_mb=file_size_mb,
+                                         cfg_html=output_filename)
+                except Exception as e:
+                    logger.error(f"Error generating CFG for sample: {e}")
+                    flash(f"Error generating CFG: {e}", "warning")
+                    return render_template("inspector.html", 
+                                         assembly_code=asm_content,
+                                         filename="test.s")
             except Exception as e:
                 flash(f"Error loading sample file: {str(e)}", "error")
                 return render_template("inspector.html")
@@ -172,18 +303,113 @@ def inspect():
             return render_template("inspector.html")
         
         try:
-            # Read assembly content
-            asm_content = asm_file.read().decode('utf-8')
+            # Read assembly content with robust encoding handling
+            content_bytes = asm_file.read()
+            asm_content = None
+            for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                try:
+                    asm_content = content_bytes.decode(encoding)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            
+            if asm_content is None:
+                asm_content = content_bytes.decode('utf-8', errors='replace')
             
             # Check file size (warn if >5MB)
             file_size_mb = len(asm_content) / (1024 * 1024)
             if file_size_mb > 5:
                 flash(f"Warning: Large file ({file_size_mb:.1f}MB) may take time to parse", "warning")
             
-            return render_template("inspector.html", 
-                                 assembly_code=asm_content,
-                                 filename=asm_file.filename,
-                                 file_size_mb=file_size_mb)
+            # Parse assembly and generate CFG
+            try:
+                # Create temporary file for parsing 
+                # Wait, parse_assembly_file takes a filepath. We haven't saved the file yet in this block.
+                # Let's save it temporarily.
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(asm_file.filename)[1]) as tmp:
+                    tmp.write(content_bytes)
+                    tmp_path = tmp.name
+                
+                G = parse_assembly_file(tmp_path)
+                os.unlink(tmp_path) # Clean up
+                
+                # Generate PyVis visualization with hierarchical layout
+                net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="black", directed=True)
+                net.from_nx(G)
+                
+                # Configure hierarchical layout (waterfall/top-down)
+                net.set_options("""
+                {
+                  "layout": {
+                    "hierarchical": {
+                      "enabled": true,
+                      "direction": "UD",
+                      "sortMethod": "directed",
+                      "nodeSpacing": 150,
+                      "levelSeparation": 200,
+                      "treeSpacing": 200
+                    }
+                  },
+                  "physics": {
+                    "enabled": false
+                  },
+                  "edges": {
+                    "smooth": {
+                      "type": "cubicBezier",
+                      "forceDirection": "vertical"
+                    }
+                  }
+                }
+                """)
+                
+                # Style nodes and edges with line number metadata
+                for node in net.nodes:
+                    node['color'] = '#97c2fc'
+                    node['shape'] = 'box'
+                    node['font'] = {'face': 'monospace', 'align': 'left'}
+                    
+                    # Add line number metadata from NetworkX graph
+                    node_id = node['id']
+                    if node_id in G.nodes:
+                        node_data = G.nodes[node_id]
+                        start_line = node_data.get('start_line', -1)
+                        end_line = node_data.get('end_line', -1)
+                        
+                        # Add to title for visibility
+                        lines_info = f"Lines {start_line}-{end_line}" if start_line >= 0 else "No line info"
+                        node['title'] = f"{node_id}\n{lines_info}"
+                        
+                        # Store as custom data for JavaScript access
+                        node['start_line'] = start_line
+                        node['end_line'] = end_line
+                    
+                for edge in net.edges:
+                    edge['color'] = '#848484'
+                    edge['arrows'] = 'to'
+                
+                # Save to a string/file to embed
+                # PyVis save_graph saves to a file. We can save to static.
+                output_filename = f"cfg_{os.urandom(4).hex()}.html"
+                output_path = os.path.join('static', output_filename)
+                net.save_graph(output_path)
+                
+                # Inject interactive JavaScript for node clicking
+                inject_cfg_interaction_js(output_path)
+                
+                return render_template("inspector.html", 
+                                     assembly_code=asm_content,
+                                     filename=asm_file.filename,
+                                     file_size_mb=file_size_mb,
+                                     cfg_html=output_filename)
+                                     
+            except Exception as e:
+                logger.error(f"Error generating CFG: {e}")
+                flash(f"Error generating CFG: {e}", "warning")
+                return render_template("inspector.html", 
+                                     assembly_code=asm_content,
+                                     filename=asm_file.filename,
+                                     file_size_mb=file_size_mb)
         except Exception as e:
             logger.error(f"Error reading assembly file: {str(e)}")
             flash(f"Error reading file: {str(e)}", "error")
