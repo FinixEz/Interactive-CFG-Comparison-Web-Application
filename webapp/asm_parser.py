@@ -8,6 +8,61 @@ compatible with the existing CFG comparison logic.
 import re
 import networkx as nx
 from typing import Dict, List, Set, Tuple, Optional
+import os
+
+
+def preprocess_masm(asm_content: str, inc_dir: str = '.') -> str:
+    """
+    Expand INCLUDE directives like MASM does.
+    
+    This preprocessor handles MASM-style INCLUDE directives, which are common
+    in malware samples (e.g., theZoo malware collection). It recursively expands
+    all INCLUDE files, giving you the fully expanded assembly exactly as the
+    assembler sees it.
+    
+    Args:
+        asm_content: Assembly source code as string
+        inc_dir: Directory to search for include files
+        
+    Returns:
+        Expanded assembly code with all INCLUDE directives resolved
+    """
+    lines = asm_content.split('\n')
+    expanded = []
+    
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # INCLUDE directive (case-insensitive)
+        if line_stripped.upper().startswith('INCLUDE '):
+            inc_file = line_stripped.split(' ', 1)[1].strip().strip('"\'')
+            try:
+                inc_path = os.path.join(inc_dir, inc_file)
+                # Try multiple encodings for include files
+                inc_content = None
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        with open(inc_path, 'r', encoding=encoding) as f:
+                            inc_content = f.read()
+                        break
+                    except (UnicodeDecodeError, FileNotFoundError):
+                        continue
+                
+                if inc_content:
+                    # Recursively expand includes in the included file
+                    inc_expanded = preprocess_masm(inc_content, inc_dir)
+                    expanded.extend(inc_expanded.split('\n'))
+                    print(f"✓ Expanded INCLUDE: {inc_file}")
+                else:
+                    print(f"⚠ WARNING: Could not read {inc_file}")
+                    expanded.append(line)  # Keep original line if include fails
+            except Exception as e:
+                print(f"⚠ WARNING: Error processing {inc_file}: {e}")
+                expanded.append(line)  # Keep original line if include fails
+        else:
+            expanded.append(line)
+    
+    return '\n'.join(expanded)
 
 
 class AssemblyParser:
@@ -75,8 +130,28 @@ class AssemblyParser:
         Returns:
             NetworkX directed graph representing the CFG
         """
-        with open(filepath, 'r', encoding='utf-8') as f:
-            asm_code = f.read()
+        # Try reading with different encodings
+        encodings = ['utf-8', 'latin-1', 'cp1252']
+        asm_code = None
+        
+        for encoding in encodings:
+            try:
+                with open(filepath, 'r', encoding=encoding) as f:
+                    asm_code = f.read()
+                break
+            except UnicodeDecodeError:
+                continue
+                
+        if asm_code is None:
+            # If all fail, read as binary and decode with replacement
+            with open(filepath, 'rb') as f:
+                asm_code = f.read().decode('utf-8', errors='replace')
+        
+        # Preprocess MASM INCLUDE directives for .asm files
+        if filepath.lower().endswith('.asm'):
+            inc_dir = os.path.dirname(filepath) or '.'
+            asm_code = preprocess_masm(asm_code, inc_dir)
+            print(f"✓ Preprocessed MASM file: {filepath}")
         
         if auto_detect_arch:
             self.arch = self.detect_architecture(asm_code)

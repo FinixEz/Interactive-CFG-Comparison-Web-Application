@@ -7,6 +7,8 @@ import tempfile
 import os
 import logging
 import json
+import time
+import glob
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Required for flash messages
@@ -21,6 +23,30 @@ logger = logging.getLogger(__name__)
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static', exist_ok=True)
+
+
+def cleanup_old_cfg_files(max_age_hours=1):
+    """
+    Remove old CFG HTML files from static directory.
+    
+    Args:
+        max_age_hours: Maximum age in hours before files are deleted
+    """
+    try:
+        pattern = os.path.join('static', 'cfg_*.html')
+        current_time = time.time()
+        max_age_seconds = max_age_hours * 3600
+        
+        for filepath in glob.glob(pattern):
+            file_age = current_time - os.path.getmtime(filepath)
+            if file_age > max_age_seconds:
+                try:
+                    os.remove(filepath)
+                    logger.info(f"Cleaned up old CFG file: {filepath}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove {filepath}: {e}")
+    except Exception as e:
+        logger.error(f"Error during CFG cleanup: {e}")
 
 
 def allowed_file(filename):
@@ -200,9 +226,21 @@ def inspect():
         if 'sample' in request.form:
             # Load sample assembly file
             try:
-                sample_path = "static/test.s"
-                with open(sample_path, 'r') as f:
-                    asm_content = f.read()
+                sample_path = "static/anthrax.asm"
+                # Read with robust encoding handling
+                with open(sample_path, 'rb') as f:
+                    content_bytes = f.read()
+                
+                asm_content = None
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        asm_content = content_bytes.decode(encoding)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                
+                if asm_content is None:
+                    asm_content = content_bytes.decode('utf-8', errors='replace')
                 
                 # Parse assembly and generate CFG for sample
                 try:
@@ -262,6 +300,9 @@ def inspect():
                         edge['color'] = '#848484'
                         edge['arrows'] = 'to'
                     
+                    # Clean up old CFG files before generating new one
+                    cleanup_old_cfg_files(max_age_hours=1)
+                    
                     # Save CFG visualization
                     output_filename = f"cfg_{os.urandom(4).hex()}.html"
                     output_path = os.path.join('static', output_filename)
@@ -273,7 +314,7 @@ def inspect():
                     file_size_mb = len(asm_content) / (1024 * 1024)
                     return render_template("inspector.html", 
                                          assembly_code=asm_content,
-                                         filename="test.s",
+                                         filename="anthrax.asm",
                                          file_size_mb=file_size_mb,
                                          cfg_html=output_filename)
                 except Exception as e:
@@ -281,7 +322,7 @@ def inspect():
                     flash(f"Error generating CFG: {e}", "warning")
                     return render_template("inspector.html", 
                                          assembly_code=asm_content,
-                                         filename="test.s")
+                                         filename="anthrax.asm")
             except Exception as e:
                 flash(f"Error loading sample file: {str(e)}", "error")
                 return render_template("inspector.html")
@@ -324,15 +365,25 @@ def inspect():
             # Parse assembly and generate CFG
             try:
                 # Create temporary file for parsing 
-                # Wait, parse_assembly_file takes a filepath. We haven't saved the file yet in this block.
-                # Let's save it temporarily.
+                # Save to uploads directory to allow INCLUDE preprocessing
+                filename = secure_filename(asm_file.filename)
+                temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 
-                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(asm_file.filename)[1]) as tmp:
-                    tmp.write(content_bytes)
-                    tmp_path = tmp.name
+                with open(temp_path, 'wb') as f:
+                    f.write(content_bytes)
                 
-                G = parse_assembly_file(tmp_path)
-                os.unlink(tmp_path) # Clean up
+                # For .ASM files, check if there's a companion .INC file
+                if filename.lower().endswith('.asm'):
+                    base_name = os.path.splitext(filename)[0]
+                    inc_filename = base_name + '.INC'
+                    inc_path = os.path.join(app.config['UPLOAD_FOLDER'], inc_filename)
+                    
+                    if os.path.exists(inc_path):
+                        logger.info(f"Found companion include file: {inc_filename}")
+                        flash(f"Found and using companion file: {inc_filename}", "success")
+                
+                # Parse the assembly file (preprocessor will handle INCLUDEs automatically)
+                G = parse_assembly_file(temp_path)
                 
                 # Generate PyVis visualization with hierarchical layout
                 net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="black", directed=True)
@@ -388,6 +439,9 @@ def inspect():
                     edge['color'] = '#848484'
                     edge['arrows'] = 'to'
                 
+                # Clean up old CFG files before generating new one
+                cleanup_old_cfg_files(max_age_hours=1)
+                
                 # Save to a string/file to embed
                 # PyVis save_graph saves to a file. We can save to static.
                 output_filename = f"cfg_{os.urandom(4).hex()}.html"
@@ -396,6 +450,12 @@ def inspect():
                 
                 # Inject interactive JavaScript for node clicking
                 inject_cfg_interaction_js(output_path)
+                
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp file: {e}")
                 
                 return render_template("inspector.html", 
                                      assembly_code=asm_content,

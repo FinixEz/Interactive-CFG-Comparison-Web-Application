@@ -76,7 +76,7 @@
             <h2>Comparison Statistics</h2>
             <div class="comparison-header">
                 <div class="file-badge">📄 {{ stats.filename1 }}</div>
-                <div class="vs-divider">VS</div>
+                <div class="vs-divider">and</div>
                 <div class="file-badge">📄 {{ stats.filename2 }}</div>
             </div>
 
@@ -162,6 +162,18 @@
 
         document.getElementById('graph2').addEventListener('change', function (e) {
             document.getElementById('filename2').textContent = e.target.files[0]?.name || 'No file chosen';
+        });
+
+        // Handle sample button click - remove required attribute to allow form submission
+        document.querySelector('button[name="sample"]').addEventListener('click', function (e) {
+            document.getElementById('graph1').removeAttribute('required');
+            document.getElementById('graph2').removeAttribute('required');
+        });
+
+        // Re-add required attribute when compare button is clicked
+        document.querySelector('.btn-primary').addEventListener('click', function (e) {
+            document.getElementById('graph1').setAttribute('required', 'required');
+            document.getElementById('graph2').setAttribute('required', 'required');
         });
     </script>
 </body>
