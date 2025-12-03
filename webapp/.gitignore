@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+.env
+venv/
+env/
+malwarecfg-env/
+static/cfg_*.html
+uploads/*
+!uploads/.gitkeep
