@@ -1,6 +1,17 @@
 # Interactive CFG Comparison Web Application
 
+[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://interactive-cfg-comparison-web.onrender.com)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Flask](https://img.shields.io/badge/flask-3.1.2-green.svg)](https://flask.palletsprojects.com/)
+[![License](https://img.shields.io/badge/license-Educational-orange.svg)](LICENSE)
+
 A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFGs) from assembly code and JSON files. This application provides interactive graph visualization, side-by-side comparison, and real-time assembly code inspection with CFG generation.
+
+## 🚀 Live Demo
+
+**Try it now:** [https://interactive-cfg-comparison-web.onrender.com](https://interactive-cfg-comparison-web.onrender.com)
+
+> **Note**: The app is hosted on Render's free tier and may take ~30 seconds to wake up if it has been inactive.
 
 ## 🌟 Features
 
