@@ -30,6 +30,15 @@ uploads/
 Sample/*.pkl
 Data colletion/
 
+# Non-webapp project folders
+Ghidra/
+Paper/
+Report/
+Present/
+Screenshort/
+Sample/
+anothercfgnetworkx/
+
 # OS
 .DS_Store
 Thumbs.db
