@@ -3,7 +3,7 @@
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://interactive-cfg-comparison-web.onrender.com)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.1.2-green.svg)](https://flask.palletsprojects.com/)
-[![License](https://img.shields.io/badge/license-Educational-orange.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFGs) from assembly code and JSON files. This application provides interactive graph visualization, side-by-side comparison, and real-time assembly code inspection with CFG generation.
 
@@ -232,7 +232,9 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## 📜 License
 
-This project is available for educational and research purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**TL;DR**: You can use this project for anything, including commercial purposes, as long as you include the original copyright notice.
 
 ## 🙏 Acknowledgments
 
