@@ -2,7 +2,7 @@ services:
   - type: web
     name: cfg-comparison-app
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-production.txt
     startCommand: gunicorn --chdir webapp app:app --timeout 120 --workers 2 --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION

@@ -22,7 +22,7 @@ This guide will help you deploy the Interactive CFG Comparison Web Application t
 3. **Configure the Service** (if not auto-detected)
    - **Name**: `cfg-comparison-app` (or your choice)
    - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
+   - **Build Command**: `pip install -r requirements-production.txt`
    - **Start Command**: `gunicorn --chdir webapp app:app --timeout 120 --workers 2 --bind 0.0.0.0:$PORT`
    - **Instance Type**: Free
 
@@ -91,7 +91,7 @@ This guide will help you deploy the Interactive CFG Comparison Web Application t
 3. **Create Virtual Environment**
    ```bash
    mkvirtualenv --python=/usr/bin/python3.10 cfgapp
-   pip install -r requirements.txt
+   pip install -r requirements-production.txt
    ```
 
 4. **Configure Web App**
