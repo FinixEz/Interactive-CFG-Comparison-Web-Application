@@ -22,6 +22,15 @@ app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_
 ALLOWED_EXTENSIONS = {'json', 's', 'asm'}
 ASSEMBLY_EXTENSIONS = {'s', 'asm'}
 
+# vis.js degrades badly past ~1-2k nodes; cap what we render (stats are
+# always computed on the full graphs)
+MAX_VIS_NODES = int(os.environ.get('MAX_VIS_NODES', 800))
+
+# Below this name overlap (fraction of the smaller graph) node names are
+# considered unrelated (e.g. address-based IDs from different binaries) and
+# shared/unique classification falls back to structural matching
+NAME_OVERLAP_THRESHOLD = float(os.environ.get('NAME_OVERLAP_THRESHOLD', 0.05))
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,18 +80,38 @@ def decode_bytes(content_bytes):
     return content_bytes.decode('utf-8', errors='replace')
 
 
+def truncate_to_important(G, importance, max_nodes=None):
+    """
+    Reduce a graph to its max_nodes most important nodes for rendering.
+
+    Returns (subgraph, dropped_count); dropped_count is 0 when no cap applied.
+    """
+    max_nodes = max_nodes or MAX_VIS_NODES
+    n = G.number_of_nodes()
+    if n <= max_nodes:
+        return G, 0
+    keep = sorted(G.nodes(), key=lambda node: importance[node]['score'],
+                  reverse=True)[:max_nodes]
+    return G.subgraph(keep), n - max_nodes
+
+
 def generate_cfg_visualization(G):
     """
     Render a CFG as an interactive PyVis HTML file in the static directory.
 
     Returns the generated filename (relative to static/).
     """
+    # Node-importance classification (betweenness/degree centrality)
+    importance = compute_node_importance(G)
+
+    G, dropped = truncate_to_important(G, importance)
+    if dropped:
+        flash(f"Large graph: showing the {G.number_of_nodes()} most important "
+              f"nodes ({dropped} hidden)", "warning")
+
     net = Network(height="600px", width="100%", bgcolor="#0e131b",
                   font_color="#d7e0ec", directed=True, cdn_resources='remote')
     net.from_nx(G)
-
-    # Node-importance classification (betweenness/degree centrality)
-    importance = compute_node_importance(G)
 
     # Configure hierarchical layout (waterfall/top-down)
     net.set_options("""
@@ -454,7 +483,7 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
         # structural matching for the shared/unique classification
         min_nodes = min(len(G1.nodes()), len(G2.nodes()))
         name_overlap = len(nodes_in_both) / min_nodes if min_nodes else 0
-        match_mode = 'name' if name_overlap >= 0.05 else 'structure'
+        match_mode = 'name' if name_overlap >= NAME_OVERLAP_THRESHOLD else 'structure'
 
         if match_mode == 'name':
             common_nodes = len(nodes_in_both)
@@ -464,7 +493,8 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
             common_edges = len(struct['matched_edges_1'])
 
         # Node-importance classification on the combined structure
-        importance = compute_node_importance(nx.compose(G1, G2))
+        combined_graph = nx.compose(G1, G2)
+        importance = compute_node_importance(combined_graph)
         top_nodes = sorted(importance.items(), key=lambda kv: kv[1]['score'], reverse=True)[:5]
 
         # Calculate statistics with filenames
@@ -526,8 +556,15 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
         
         g1_nodes, g2_nodes = set(G1.nodes()), set(G2.nodes())
         g1_edges, g2_edges = set(G1.edges()), set(G2.edges())
-        all_nodes = g1_nodes.union(g2_nodes)
-        all_edges = g1_edges.union(g2_edges)
+
+        # Cap what we render (stats above already cover the full graphs)
+        render_graph, dropped = truncate_to_important(combined_graph, importance)
+        if dropped:
+            flash(f"Large graph: rendering the {render_graph.number_of_nodes()} "
+                  f"most important nodes ({dropped} hidden — stats cover all)",
+                  "warning")
+        all_nodes = set(render_graph.nodes())
+        all_edges = set(render_graph.edges())
 
         # Add nodes with colors (provenance) and size/border (importance)
         for node in all_nodes:

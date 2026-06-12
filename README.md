@@ -102,9 +102,9 @@ docker build -t cfg-webapp .
 docker run -d -p 127.0.0.1:5000:5000 cfg-webapp
 ```
 > The compose file binds to `127.0.0.1` by default. Docker-published ports
-> bypass ufw/host firewalls — change the mapping to `"5000:5000"` only if you
-> want the app reachable from your network, and set a real `SECRET_KEY`
-> (e.g. in a `.env` file next to `docker-compose.yml`).
+> bypass ufw/host firewalls — set `BIND_ADDR=0.0.0.0` only if you want the
+> app reachable from your network, and set a real `SECRET_KEY` (both e.g.
+> in a `.env` file next to `docker-compose.yml`).
 
 The application will start on `http://localhost:5000`
 
