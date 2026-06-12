@@ -19,22 +19,24 @@ A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFG
 - **Multi-format Support**: Upload and compare CFGs from JSON files or assembly code (`.s`, `.asm`)
 - **Interactive Visualization**: Zoom, pan, and explore graph structures with physics-based layouts
 - **Visual Differentiation**: 
-  - 🟠 Orange nodes: Present in both graphs
-  - 🔵 Blue nodes: Unique to Graph 1
+  - 🟠 Amber nodes: Present in both graphs
+  - 🔵 Cyan nodes: Unique to Graph 1
   - 🟢 Green nodes: Unique to Graph 2
 - **Detailed Statistics**: View node/edge counts and commonalities between graphs
+- **Structural Similarity**: Weisfeiler-Lehman fingerprint score that works even when node names can't match (different address spaces); shared/unique coloring falls back to structural matching automatically
+- **Node-Importance Classification**: Nodes are ranked by betweenness/degree centrality and tiered (critical / high / normal) — node size reflects the score, critical nodes get a red border, and the top-ranked nodes are listed with the statistics
 - **Sample Data**: Quick-start with pre-loaded sample graphs
 
 ### 2. **Assembly Inspector**
 - **Real-time CFG Generation**: Upload assembly files and instantly generate control flow graphs
 - **Interactive Code Highlighting**: Click on CFG nodes to highlight corresponding assembly code
 - **Hierarchical Layout**: Top-down waterfall visualization for better code flow understanding
-- **Multi-format Support**: Works with `.s`, `.asm`, and JSON CFG files
+- **Multi-format Support**: Works with `.s` (GNU/AT&T) and `.asm` (MASM/TASM/NASM) files, including colon-less `name label near` / `name proc` labels and TASM `comment` blocks found in real malware sources (theZoo)
 - **Large File Handling**: Robust encoding detection and efficient parsing for large assembly files
 - **MASM Preprocessor**: Automatic handling of INCLUDE directives for MASM assembly files
 
 ### 3. **Technical Capabilities**
-- **Assembly Parsing**: Powered by `angr` and `asmcfg` for accurate CFG extraction
+- **Assembly Parsing**: Lightweight built-in parser (label/jump analysis) for x86/x86_64 and ARM64 assembly; `angr` is used offline to extract CFGs from binaries (see `convertpkltojson.py`)
 - **Graph Analysis**: Built on NetworkX for robust graph operations
 - **Responsive Design**: Modern, mobile-friendly interface
 - **File Upload Validation**: Secure file handling with size limits (16MB max)
@@ -61,6 +63,14 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 ### 3. Install Dependencies
+
+For the web application only (recommended — small and fast):
+```bash
+pip install -r requirements-production.txt
+```
+
+For the full toolchain including the offline `angr`-based utilities
+(`pkl.py`, `convertpkltojson.py`):
 ```bash
 pip install -r requirements.txt
 ```
@@ -81,6 +91,20 @@ chmod +x run.sh
 cd webapp
 python app.py
 ```
+
+#### Option 3: Docker
+```bash
+docker compose up -d --build
+```
+Or without compose:
+```bash
+docker build -t cfg-webapp .
+docker run -d -p 127.0.0.1:5000:5000 cfg-webapp
+```
+> The compose file binds to `127.0.0.1` by default. Docker-published ports
+> bypass ufw/host firewalls — change the mapping to `"5000:5000"` only if you
+> want the app reachable from your network, and set a real `SECRET_KEY`
+> (e.g. in a `.env` file next to `docker-compose.yml`).
 
 The application will start on `http://localhost:5000`
 
@@ -118,17 +142,15 @@ Interactive-CFG-Comparison-Web-Application/
 │   ├── templates/              # HTML templates
 │   │   ├── index.html         # CFG comparison page
 │   │   └── inspector.html     # Assembly inspector page
-│   ├── static/                # Static assets and generated graphs
-│   │   ├── style.css          # Application styling
-│   │   ├── *.json             # Sample CFG files
-│   │   └── *.asm              # Sample assembly files
-│   └── lib/                   # JavaScript libraries
-│       ├── vis-9.1.2/         # Vis.js for graph visualization
-│       └── tom-select/        # Tom Select for dropdowns
-├── lib/                        # Shared libraries
-├── requirements.txt            # Python dependencies
+│   └── static/                # Static assets and generated graphs
+│       ├── style.css          # Application styling
+│       ├── *.json             # Sample CFG files
+│       └── *.asm              # Sample assembly files
+├── requirements.txt            # Full Python dependencies (incl. angr utilities)
+├── requirements-production.txt # Web application dependencies only
 ├── convertpkltojson.py        # Utility: Convert pickle to JSON
 ├── mockupdata.py              # Utility: Generate mock data
+├── pkl.py                     # Utility: Visualize a pickled angr CFG
 └── README.md                  # This file
 ```
 
@@ -147,10 +169,24 @@ Interactive-CFG-Comparison-Web-Application/
 - **Assembly**: `.s` (GNU Assembly), `.asm` (MASM/NASM)
 
 ### JSON CFG Format
+
+Two formats are accepted:
+
+**Simple format:**
 ```json
 {
   "nodes": ["node1", "node2", "node3"],
   "edges": [["node1", "node2"], ["node2", "node3"]]
+}
+```
+
+**NetworkX node-link format** (as produced by `convertpkltojson.py`):
+```json
+{
+  "directed": true,
+  "multigraph": false,
+  "nodes": [{"id": "node1"}, {"id": "node2"}],
+  "links": [{"source": "node1", "target": "node2"}]
 }
 ```
 
@@ -172,10 +208,17 @@ The CFG uses a top-down hierarchical layout:
 
 ### Graph Comparison Algorithm
 1. Load both graphs (JSON or assembly)
-2. Extract nodes and edges from each graph
-3. Compute intersection (common elements)
-4. Color-code nodes and edges based on presence
-5. Generate interactive visualization with legend
+2. Compute the name-based intersection of nodes and (direction-sensitive) edges
+3. Compute name-independent **structural similarity** using Weisfeiler-Lehman subgraph hashes: each node gets a depth-3 neighborhood fingerprint; the similarity score is the multiset-Jaccard of all fingerprints
+4. If node names barely overlap (< 5% of the smaller graph — e.g. address-based CFG IDs from two different binaries), shared/unique classification automatically falls back to **structural matching**: a node counts as "common" when its control-flow neighborhood pattern also occurs in the other graph
+5. Classify node importance on the combined graph (60% betweenness + 40% degree centrality, normalized; top 10% = critical, next 20% = high)
+6. Color-code nodes/edges by presence, size nodes by importance
+7. Generate interactive visualization with legend
+
+> **Scope note**: name-based matching is exact — it is meaningful for related
+> graphs (same binary pre/post modification, graphs sharing a label space).
+> For unrelated samples, rely on the structural similarity score and
+> structural matches instead.
 
 ## 🛡️ Security Features
 

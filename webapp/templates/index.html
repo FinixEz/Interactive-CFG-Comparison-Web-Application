@@ -4,30 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graph Similarity Visualizer</title>
+    <title>CFG//DIFF · Graph Comparator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
-        <header class="header">
-            <h1>Graph Similarity Visualizer</h1>
-            <p class="subtitle">Compare two Control Flow Graphs (JSON or Assembly) and visualize their differences</p>
-            <div style="margin-top: 0.5rem;">
-                <a href="/inspect" style="color: #667eea; text-decoration: none; font-weight: 500;">🔍 Try Assembly
-                    Inspector →</a>
+        <header class="console-header rise">
+            <div class="brand">
+                <div class="brand-mark">&gt;_</div>
+                <div>
+                    <h1>CFG<span class="slash">//</span>DIFF</h1>
+                    <p class="tagline">control-flow graph comparator &middot; malware triage</p>
+                </div>
             </div>
+            <a href="/inspect" class="nav-btn">assembly inspector <span>&rarr;</span></a>
         </header>
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">
-            <span class="alert-icon">
-                {% if category == 'success' %}✓{% else %}⚠{% endif %}
-            </span>
+        <div class="alert alert-{{ category }} rise">
+            <span>{% if category == 'success' %}&#10003;{% else %}&#9888;{% endif %}</span>
             {{ message }}
         </div>
         {% endfor %}
@@ -35,143 +39,194 @@
         {% endwith %}
 
         <!-- Upload Form -->
-        <div class="upload-section">
-            <form action="/" method="post" enctype="multipart/form-data" class="upload-form">
-                <div class="form-grid">
-                    <div class="file-input-wrapper">
-                        <label for="graph1" class="file-label">
-                            <span class="file-icon">📄</span>
-                            <span class="file-text">Graph 1 (JSON/Assembly)</span>
-                        </label>
+        <section class="upload-section rise d1">
+            <h2 class="sec-title">load graphs</h2>
+            <form action="/" method="post" enctype="multipart/form-data">
+                <div class="upload-grid">
+                    <label class="dropzone g1" for="graph1">
+                        <span class="dz-tag t-g1">graph 1</span>
+                        <span class="dz-hint">.json &middot; .s &middot; .asm</span>
+                        <span class="file-name" id="filename1">no file selected</span>
                         <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required>
-                        <span class="file-name" id="filename1">No file chosen</span>
-                    </div>
+                    </label>
 
-                    <div class="file-input-wrapper">
-                        <label for="graph2" class="file-label">
-                            <span class="file-icon">📄</span>
-                            <span class="file-text">Graph 2 (JSON/Assembly)</span>
-                        </label>
+                    <div class="vs-badge"><span>VS</span></div>
+
+                    <label class="dropzone g2" for="graph2">
+                        <span class="dz-tag t-g2">graph 2</span>
+                        <span class="dz-hint">.json &middot; .s &middot; .asm</span>
+                        <span class="file-name" id="filename2">no file selected</span>
                         <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required>
-                        <span class="file-name" id="filename2">No file chosen</span>
-                    </div>
+                    </label>
                 </div>
 
-                <div class="button-group">
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-icon">🔍</span>
-                        Compare Graphs
-                    </button>
-                    <button type="submit" name="sample" value="1" class="btn btn-secondary">
-                        <span class="btn-icon">📊</span>
-                        Try Sample Data
-                    </button>
+                <div class="button-row">
+                    <button type="submit" class="btn btn-primary">Compare graphs</button>
+                    <button type="submit" name="sample" value="1" class="btn btn-ghost">Load sample data</button>
                 </div>
             </form>
-        </div>
+        </section>
 
         <!-- Statistics Display -->
         {% if stats %}
-        <div class="stats-section">
-            <h2>Comparison Statistics</h2>
+        <section class="stats-section rise d2">
+            <h2 class="sec-title">comparison statistics</h2>
+
             <div class="comparison-header">
-                <div class="file-badge">📄 {{ stats.filename1 }}</div>
-                <div class="vs-divider">and</div>
-                <div class="file-badge">📄 {{ stats.filename2 }}</div>
+                <div class="file-badge f1">{{ stats.filename1 }}</div>
+                <div class="vs-divider">VS</div>
+                <div class="file-badge f2">{{ stats.filename2 }}</div>
+            </div>
+
+            <div class="struct-readout">
+                <div class="label">
+                    <span>structural similarity &middot; WL fingerprints</span>
+                    <b>{{ stats.structural_score }}%</b>
+                </div>
+                <div class="meter"><span style="width: {{ stats.structural_score }}%;"></span></div>
+                {% if stats.match_mode == 'structure' %}
+                <div class="struct-note">
+                    Node names barely overlap between these files (e.g. different address
+                    spaces) &mdash; "common" counts below are <b>structural matches</b>:
+                    blocks with the same control-flow neighborhood pattern, not name matches.
+                </div>
+                {% endif %}
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card c-g1">
                     <div class="stat-value">{{ stats.g1_nodes }}</div>
-                    <div class="stat-label">{{ stats.filename1 }} Nodes</div>
+                    <div class="stat-label">{{ stats.filename1 }} nodes</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card c-g2">
                     <div class="stat-value">{{ stats.g2_nodes }}</div>
-                    <div class="stat-label">{{ stats.filename2 }} Nodes</div>
+                    <div class="stat-label">{{ stats.filename2 }} nodes</div>
                 </div>
-                <div class="stat-card highlight">
+                <div class="stat-card c-common">
                     <div class="stat-value">{{ stats.common_nodes }}</div>
-                    <div class="stat-label">Common Nodes</div>
+                    <div class="stat-label">common nodes{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card c-g1">
                     <div class="stat-value">{{ stats.g1_edges }}</div>
-                    <div class="stat-label">{{ stats.filename1 }} Edges</div>
+                    <div class="stat-label">{{ stats.filename1 }} edges</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card c-g2">
                     <div class="stat-value">{{ stats.g2_edges }}</div>
-                    <div class="stat-label">{{ stats.filename2 }} Edges</div>
+                    <div class="stat-label">{{ stats.filename2 }} edges</div>
                 </div>
-                <div class="stat-card highlight">
+                <div class="stat-card c-common">
                     <div class="stat-value">{{ stats.common_edges }}</div>
-                    <div class="stat-label">Common Edges</div>
+                    <div class="stat-label">common edges{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
                 </div>
             </div>
-        </div>
-        {% endif %}
 
+            {% if stats.top_nodes %}
+            <div class="importance-block">
+                <h2 class="sec-title">node-importance classification</h2>
+                <p class="importance-sub">
+                    betweenness/degree centrality on the combined graph &mdash;
+                    {{ stats.critical_nodes }} node{{ 's' if stats.critical_nodes != 1 }} classified critical
+                </p>
+                <table class="imp-table">
+                    <thead>
+                        <tr>
+                            <th>node</th>
+                            <th>tier</th>
+                            <th>score</th>
+                            <th>present in</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for n in stats.top_nodes %}
+                        <tr>
+                            <td class="node-name">{{ n.name|truncate(50) }}</td>
+                            <td><span class="chip {{ n.tier }}">{{ n.tier }}</span></td>
+                            <td>{{ n.score }}</td>
+                            <td>{{ n.where }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <!-- Visualization Display -->
         {% if visualized %}
-        <div class="visualization-section">
-            <h2>{{ stats.filename1 }} vs {{ stats.filename2 }}</h2>
-            <div class="graph-container">
-                <iframe src="{{ url_for('static', filename='combined_graph.html') }}" class="graph-iframe"
-                    title="Combined Graph Visualization">
-                </iframe>
+        <section class="visualization-section rise d3">
+            <h2 class="sec-title">combined graph</h2>
+            <div class="viewport">
+                <div class="viewport-bar">
+                    <span class="vp-title">{{ stats.filename1 }} &nbsp;vs&nbsp; {{ stats.filename2 }}</span>
+                    <span class="mode-chip">{{ 'structural match' if stats.match_mode == 'structure' else 'name match' }}</span>
+                </div>
+                <iframe src="{{ url_for('static', filename=graph_file) }}" class="graph-iframe"
+                    title="Combined Graph Visualization"></iframe>
             </div>
 
             <div class="legend">
-                <h3>Legend</h3>
                 <div class="legend-items">
                     <div class="legend-item">
-                        <span class="legend-color" style="background: orange;"></span>
-                        <span>Common Nodes</span>
+                        <span class="legend-color" style="background: #ffb454;"></span>
+                        <span>common nodes</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: lightblue;"></span>
-                        <span>{{ stats.filename1 }} Only Nodes</span>
+                        <span class="legend-color" style="background: #56c8ff;"></span>
+                        <span>{{ stats.filename1 }} only</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: lightgreen;"></span>
-                        <span>{{ stats.filename2 }} Only Nodes</span>
+                        <span class="legend-color" style="background: #6fdb8d;"></span>
+                        <span>{{ stats.filename2 }} only</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: red;"></span>
-                        <span>Common Edges</span>
+                        <span class="legend-color edge" style="background: #ff6b6b;"></span>
+                        <span>common edges</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: blue;"></span>
-                        <span>{{ stats.filename1 }} Only Edges</span>
+                        <span class="legend-color edge" style="background: #3d8bff;"></span>
+                        <span>{{ stats.filename1 }} only edges</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color" style="background: green;"></span>
-                        <span>{{ stats.filename2 }} Only Edges</span>
+                        <span class="legend-color edge" style="background: #2ecc71;"></span>
+                        <span>{{ stats.filename2 }} only edges</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: transparent; border: 2px solid #ff5d5d;"></span>
+                        <span>critical node &middot; size &#8733; importance</span>
                     </div>
                 </div>
             </div>
-
-        </div>
+        </section>
         {% endif %}
+
+        <footer class="console-footer">
+            <span>CFG<span class="dot">//</span>DIFF &mdash; structural malware triage</span>
+            <span>networkx &middot; weisfeiler-lehman &middot; pyvis</span>
+        </footer>
     </div>
 
     <script>
-        // File input display
-        document.getElementById('graph1').addEventListener('change', function (e) {
-            document.getElementById('filename1').textContent = e.target.files[0]?.name || 'No file chosen';
-        });
+        // File input display + dropzone state
+        function wireInput(inputId, nameId) {
+            const input = document.getElementById(inputId);
+            input.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                document.getElementById(nameId).textContent = file?.name || 'no file selected';
+                input.closest('.dropzone').classList.toggle('has-file', !!file);
+            });
+        }
+        wireInput('graph1', 'filename1');
+        wireInput('graph2', 'filename2');
 
-        document.getElementById('graph2').addEventListener('change', function (e) {
-            document.getElementById('filename2').textContent = e.target.files[0]?.name || 'No file chosen';
-        });
-
-        // Handle sample button click - remove required attribute to allow form submission
-        document.querySelector('button[name="sample"]').addEventListener('click', function (e) {
+        // Sample button: drop required so the form submits without files
+        document.querySelector('button[name="sample"]').addEventListener('click', function () {
             document.getElementById('graph1').removeAttribute('required');
             document.getElementById('graph2').removeAttribute('required');
         });
 
-        // Re-add required attribute when compare button is clicked
-        document.querySelector('.btn-primary').addEventListener('click', function (e) {
+        // Compare button: restore required
+        document.querySelector('.btn-primary').addEventListener('click', function () {
             document.getElementById('graph1').setAttribute('required', 'required');
             document.getElementById('graph2').setAttribute('required', 'required');
         });

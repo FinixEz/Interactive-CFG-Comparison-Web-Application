@@ -6,5 +6,9 @@ venv/
 env/
 malwarecfg-env/
 static/cfg_*.html
+static/combined_*.html
+static/graph1.html
+static/graph2.html
+lib/
 uploads/*
 !uploads/.gitkeep

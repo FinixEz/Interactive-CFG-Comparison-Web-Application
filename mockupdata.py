@@ -91,7 +91,7 @@ def save_cfg_json(G, json_path):
     print(f"Balanced mock CFG saved as {json_path}")
 
 if __name__ == "__main__":
-    malware_json = "boombasv2.json"
+    malware_json = "webapp/static/Bodmasv2.json"
     mock_json = "mocking.json"
 
     malware_graph = load_cfg_json(malware_json)

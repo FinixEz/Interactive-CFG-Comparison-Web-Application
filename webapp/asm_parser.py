@@ -170,7 +170,11 @@ class AssemblyParser:
             NetworkX directed graph
         """
         lines = asm_code.split('\n')
-        
+
+        # Blank out TASM `comment` block comments (keeps line numbering intact
+        # so the inspector's line highlighting stays aligned)
+        lines = self._strip_comment_blocks(lines)
+
         # Extract labels and their line numbers
         labels = self._extract_labels(lines)
         
@@ -189,26 +193,63 @@ class AssemblyParser:
         
         return G
     
+    def _strip_comment_blocks(self, lines: List[str]) -> List[str]:
+        """
+        Blank out TASM/MASM ``comment`` block comments.
+
+        The directive ``comment <delim>`` starts a block that runs until the
+        delimiter character appears again (e.g. ``comment ;) ... (;``). These
+        blocks are common in real malware headers (theZoo's RELOCK.ASM opens
+        with one). Lines are replaced with '' rather than removed so that line
+        numbers stay aligned with the displayed source.
+        """
+        out = list(lines)
+        i, n = 0, len(lines)
+        while i < n:
+            m = re.match(r'^comment\b\s*(\S)', lines[i].strip(), re.IGNORECASE)
+            if not m:
+                i += 1
+                continue
+            delim = m.group(1)
+            opening_rest = lines[i].strip()[m.end():]
+            out[i] = ''
+            i += 1
+            # Closing delimiter may already be on the opening line
+            if delim in opening_rest:
+                continue
+            while i < n:
+                closes = delim in lines[i]
+                out[i] = ''
+                i += 1
+                if closes:
+                    break
+        return out
+
     def _extract_labels(self, lines: List[str]) -> Dict[str, int]:
         """
         Extract all labels and their line numbers from assembly code.
-        
+
         Args:
             lines: List of assembly code lines
-            
+
         Returns:
             Dictionary mapping label names to line numbers
         """
         labels = {}
         for i, line in enumerate(lines):
             line = line.strip()
-            # Match labels (e.g., "label:", ".LBB0_1:", "test:")
-            if ':' in line and not line.startswith('#'):
-                # Extract label name (everything before the colon)
-                label_match = re.match(r'^([.\w]+):', line)
-                if label_match:
-                    label_name = label_match.group(1)
-                    labels[label_name] = i
+            if not line or line.startswith('#') or line.startswith(';'):
+                continue
+            # Colon labels (GAS/MASM): "label:", ".LBB0_1:", "test:"
+            colon_match = re.match(r'^([.\w]+):', line)
+            if colon_match:
+                labels[colon_match.group(1)] = i
+                continue
+            # Colon-less TASM/MASM labels: "name label near", "name proc".
+            # All of RELOCK.ASM's code labels use this form.
+            directive_match = re.match(r'^([.\w$]+)\s+(label|proc)\b', line, re.IGNORECASE)
+            if directive_match:
+                labels[directive_match.group(1)] = i
         return labels
     
     def _build_basic_blocks(self, lines: List[str], labels: Dict[str, int]) -> Dict[str, dict]:
@@ -231,9 +272,9 @@ class AssemblyParser:
         
         for i, line in enumerate(lines):
             line_stripped = line.strip()
-            
-            # Skip empty lines and comments
-            if not line_stripped or line_stripped.startswith('#'):
+
+            # Skip empty lines and comments ('#' GAS style, ';' MASM/NASM style)
+            if not line_stripped or line_stripped.startswith('#') or line_stripped.startswith(';'):
                 continue
             
             # Check if this line is a label (start of new block)
@@ -294,36 +335,35 @@ class AssemblyParser:
                 continue
             
             last_line = lines[-1].strip().lower()
-            
+
+            # Strip inline comments (';' MASM/NASM, '#' GAS) and a leading
+            # "label:" prefix so only the instruction itself is parsed
+            last_line = last_line.split(';', 1)[0].split('#', 1)[0].strip()
+            last_line = re.sub(r'^[.\w]+:\s*', '', last_line)
+
             # Check for jump instructions
             has_unconditional_jump = False
-            has_conditional_jump = False
             jump_target = None
-            
+
             # Parse the last instruction
             parts = last_line.split()
-            if parts:
-                instruction = parts[0]
-                
-                # Check for unconditional jumps
-                if instruction in self.jumps['unconditional']:
-                    has_unconditional_jump = True
-                    if instruction != 'ret' and instruction != 'retn' and len(parts) > 1:
-                        jump_target = parts[1].rstrip(',')
-                
-                # Check for conditional jumps
-                elif instruction in self.jumps['conditional']:
-                    has_conditional_jump = True
-                    if len(parts) > 1:
-                        jump_target = parts[1].rstrip(',')
-                
-                # Check for calls (usually fall through)
-                elif instruction in self.jumps['call']:
-                    # Calls typically return, so add fall-through edge
-                    if i + 1 < len(block_list):
-                        next_block = block_list[i + 1]
-                        G.add_edge(block_id, next_block)
-            
+            instruction = parts[0] if parts else ''
+
+            # Skip MASM size/distance qualifiers to find the real target operand
+            QUALIFIERS = {'short', 'near', 'far', 'ptr', 'dword', 'word', 'byte'}
+            operands = [p.rstrip(',') for p in parts[1:] if p.rstrip(',') not in QUALIFIERS]
+
+            # Check for unconditional jumps
+            if instruction in self.jumps['unconditional']:
+                has_unconditional_jump = True
+                if instruction not in ('ret', 'retn') and operands:
+                    jump_target = operands[0]
+
+            # Check for conditional jumps (fall through handled below)
+            elif instruction in self.jumps['conditional']:
+                if operands:
+                    jump_target = operands[0]
+
             # Add edge to jump target if it exists
             if jump_target:
                 # Remove common prefixes/suffixes from jump targets
@@ -333,12 +373,13 @@ class AssemblyParser:
                     target_label = jump_target
                 else:
                     target_label = jump_target.split('@')[0]  # Remove @PLT, @GOT, etc.
-                
+
                 if target_label in basic_blocks:
                     G.add_edge(block_id, target_label)
-            
-            # Add fall-through edge for conditional jumps or if no jump
-            if has_conditional_jump or (not has_unconditional_jump and instruction not in self.jumps['unconditional']):
+
+            # Fall-through edge for everything except unconditional jumps/returns
+            # (conditional jumps and calls continue to the next block)
+            if not has_unconditional_jump:
                 if i + 1 < len(block_list):
                     next_block = block_list[i + 1]
                     G.add_edge(block_id, next_block)

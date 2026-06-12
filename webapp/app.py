@@ -1,20 +1,26 @@
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from visualize_compare import load_cfg_json, compare_graphs, add_legend_to_html
+from flask import Flask, render_template, request, jsonify, flash
+from visualize_compare import (load_cfg_json, compare_graphs, add_legend_to_html,
+                               compute_node_importance, structural_similarity,
+                               apply_dark_chrome)
 from asm_parser import parse_assembly_file
 from pyvis.network import Network
+import networkx as nx
 from werkzeug.utils import secure_filename
-import tempfile
 import os
 import logging
-import json
 import time
 import glob
+
+# Anchor all paths to this file's directory so the app works from any CWD
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
 ALLOWED_EXTENSIONS = {'json', 's', 'asm'}
+ASSEMBLY_EXTENSIONS = {'s', 'asm'}
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('static', exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
 
 
 def cleanup_old_cfg_files(max_age_hours=1):
@@ -33,11 +39,12 @@ def cleanup_old_cfg_files(max_age_hours=1):
         max_age_hours: Maximum age in hours before files are deleted
     """
     try:
-        pattern = os.path.join('static', 'cfg_*.html')
+        patterns = [os.path.join(STATIC_DIR, 'cfg_*.html'),
+                    os.path.join(STATIC_DIR, 'combined_*.html')]
         current_time = time.time()
         max_age_seconds = max_age_hours * 3600
-        
-        for filepath in glob.glob(pattern):
+
+        for filepath in [f for p in patterns for f in glob.glob(p)]:
             file_age = current_time - os.path.getmtime(filepath)
             if file_age > max_age_seconds:
                 try:
@@ -49,9 +56,109 @@ def cleanup_old_cfg_files(max_age_hours=1):
         logger.error(f"Error during CFG cleanup: {e}")
 
 
-def allowed_file(filename):
+def allowed_file(filename, allowed=ALLOWED_EXTENSIONS):
     """Check if file has allowed extension"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed
+
+
+def decode_bytes(content_bytes):
+    """Decode raw bytes trying several encodings, replacing on failure."""
+    for encoding in ['utf-8', 'latin-1', 'cp1252']:
+        try:
+            return content_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return content_bytes.decode('utf-8', errors='replace')
+
+
+def generate_cfg_visualization(G):
+    """
+    Render a CFG as an interactive PyVis HTML file in the static directory.
+
+    Returns the generated filename (relative to static/).
+    """
+    net = Network(height="600px", width="100%", bgcolor="#0e131b",
+                  font_color="#d7e0ec", directed=True, cdn_resources='remote')
+    net.from_nx(G)
+
+    # Node-importance classification (betweenness/degree centrality)
+    importance = compute_node_importance(G)
+
+    # Configure hierarchical layout (waterfall/top-down)
+    net.set_options("""
+    {
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "UD",
+          "sortMethod": "directed",
+          "nodeSpacing": 150,
+          "levelSeparation": 200,
+          "treeSpacing": 200
+        }
+      },
+      "physics": {
+        "enabled": false
+      },
+      "edges": {
+        "smooth": {
+          "type": "cubicBezier",
+          "forceDirection": "vertical"
+        }
+      }
+    }
+    """)
+
+    # Style nodes and edges with line number metadata
+    for node in net.nodes:
+        node['shape'] = 'box'
+        node['font'] = {'face': 'monospace', 'align': 'left', 'color': '#d7e0ec'}
+
+        node_id = node['id']
+
+        # Importance tier shown via border color/width
+        imp = importance.get(node_id, {'score': 0.0, 'tier': 'normal'})
+        if imp['tier'] == 'critical':
+            node['color'] = {'background': '#223049', 'border': '#ff5d5d'}
+            node['borderWidth'] = 3
+        elif imp['tier'] == 'high':
+            node['color'] = {'background': '#223049', 'border': '#ffa94d'}
+            node['borderWidth'] = 2
+        else:
+            node['color'] = {'background': '#223049', 'border': '#41557a'}
+
+        # Add line number metadata from NetworkX graph
+        if node_id in G.nodes:
+            node_data = G.nodes[node_id]
+            start_line = node_data.get('start_line', -1)
+            end_line = node_data.get('end_line', -1)
+
+            # Add to title for visibility
+            lines_info = f"Lines {start_line}-{end_line}" if start_line >= 0 else "No line info"
+            node['title'] = (f"{node_id}\n{lines_info}\n"
+                             f"Importance: {imp['tier']} (score {imp['score']:.2f})")
+
+            # Store as custom data for JavaScript access
+            node['start_line'] = start_line
+            node['end_line'] = end_line
+
+    for edge in net.edges:
+        edge['color'] = '#46546b'
+        edge['arrows'] = 'to'
+
+    # Clean up old CFG files before generating new one
+    cleanup_old_cfg_files(max_age_hours=1)
+
+    # Save CFG visualization
+    output_filename = f"cfg_{os.urandom(4).hex()}.html"
+    output_path = os.path.join(STATIC_DIR, output_filename)
+    net.save_graph(output_path)
+    apply_dark_chrome(output_path)
+
+    # Inject interactive JavaScript for node clicking
+    inject_cfg_interaction_js(output_path)
+
+    return output_filename
 
 
 def detect_file_type(filepath):
@@ -147,8 +254,8 @@ def index():
         # Check if using sample data
         if 'sample' in request.form:
             return process_graphs(
-                "static/Bodmasv2.json", 
-                "static/mocking.json", 
+                os.path.join(STATIC_DIR, "Bodmasv2.json"),
+                os.path.join(STATIC_DIR, "mocking.json"),
                 cleanup=False,
                 filename1="Bodmasv2.json",
                 filename2="mocking.json"
@@ -176,11 +283,13 @@ def index():
         original_filename1 = g1_file.filename
         original_filename2 = g2_file.filename
         
-        # Save uploaded files securely
+        # Save uploaded files securely.
+        # Prefix with a random token so two uploads with the same name
+        # (or concurrent users) never overwrite each other.
         try:
-            filename1 = secure_filename(g1_file.filename)
-            filename2 = secure_filename(g2_file.filename)
-            
+            filename1 = f"g1_{os.urandom(4).hex()}_{secure_filename(g1_file.filename)}"
+            filename2 = f"g2_{os.urandom(4).hex()}_{secure_filename(g2_file.filename)}"
+
             graph1_path = os.path.join(app.config['UPLOAD_FOLDER'], filename1)
             graph2_path = os.path.join(app.config['UPLOAD_FOLDER'], filename2)
             
@@ -226,93 +335,19 @@ def inspect():
         if 'sample' in request.form:
             # Load sample assembly file
             try:
-                sample_path = "static/anthrax.asm"
+                sample_path = os.path.join(STATIC_DIR, "anthrax.asm")
                 # Read with robust encoding handling
                 with open(sample_path, 'rb') as f:
                     content_bytes = f.read()
-                
-                asm_content = None
-                for encoding in ['utf-8', 'latin-1', 'cp1252']:
-                    try:
-                        asm_content = content_bytes.decode(encoding)
-                        break
-                    except UnicodeDecodeError:
-                        continue
-                
-                if asm_content is None:
-                    asm_content = content_bytes.decode('utf-8', errors='replace')
-                
+                asm_content = decode_bytes(content_bytes)
+
                 # Parse assembly and generate CFG for sample
                 try:
                     G = parse_assembly_file(sample_path)
-                    
-                    # Generate PyVis visualization with hierarchical layout
-                    net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="black", directed=True)
-                    net.from_nx(G)
-                    
-                    # Configure hierarchical layout (waterfall/top-down)
-                    net.set_options("""
-                    {
-                      "layout": {
-                        "hierarchical": {
-                          "enabled": true,
-                          "direction": "UD",
-                          "sortMethod": "directed",
-                          "nodeSpacing": 150,
-                          "levelSeparation": 200,
-                          "treeSpacing": 200
-                        }
-                      },
-                      "physics": {
-                        "enabled": false
-                      },
-                      "edges": {
-                        "smooth": {
-                          "type": "cubicBezier",
-                          "forceDirection": "vertical"
-                        }
-                      }
-                    }
-                    """)
-                    
-                    # Style nodes and edges with line number metadata
-                    for node in net.nodes:
-                        node['color'] = '#97c2fc'
-                        node['shape'] = 'box'
-                        node['font'] = {'face': 'monospace', 'align': 'left'}
-                        
-                        # Add line number metadata from NetworkX graph
-                        node_id = node['id']
-                        if node_id in G.nodes:
-                            node_data = G.nodes[node_id]
-                            start_line = node_data.get('start_line', -1)
-                            end_line = node_data.get('end_line', -1)
-                            
-                            # Add to title for visibility
-                            lines_info = f"Lines {start_line}-{end_line}" if start_line >= 0 else "No line info"
-                            node['title'] = f"{node_id}\n{lines_info}"
-                            
-                            # Store as custom data for JavaScript access
-                            node['start_line'] = start_line
-                            node['end_line'] = end_line
-                        
-                    for edge in net.edges:
-                        edge['color'] = '#848484'
-                        edge['arrows'] = 'to'
-                    
-                    # Clean up old CFG files before generating new one
-                    cleanup_old_cfg_files(max_age_hours=1)
-                    
-                    # Save CFG visualization
-                    output_filename = f"cfg_{os.urandom(4).hex()}.html"
-                    output_path = os.path.join('static', output_filename)
-                    net.save_graph(output_path)
-                    
-                    # Inject interactive JavaScript for node clicking
-                    inject_cfg_interaction_js(output_path)
-                    
+                    output_filename = generate_cfg_visualization(G)
+
                     file_size_mb = len(asm_content) / (1024 * 1024)
-                    return render_template("inspector.html", 
+                    return render_template("inspector.html",
                                          assembly_code=asm_content,
                                          filename="anthrax.asm",
                                          file_size_mb=file_size_mb,
@@ -320,7 +355,7 @@ def inspect():
                 except Exception as e:
                     logger.error(f"Error generating CFG for sample: {e}")
                     flash(f"Error generating CFG: {e}", "warning")
-                    return render_template("inspector.html", 
+                    return render_template("inspector.html",
                                          assembly_code=asm_content,
                                          filename="anthrax.asm")
             except Exception as e:
@@ -338,138 +373,57 @@ def inspect():
             flash("Please select an assembly file", "error")
             return render_template("inspector.html")
         
-        # Validate file extension
-        if not allowed_file(asm_file.filename):
-            flash("Only assembly files (.s, .asm) and JSON files are allowed", "error")
+        # Validate file extension (the inspector parses assembly only)
+        if not allowed_file(asm_file.filename, ASSEMBLY_EXTENSIONS):
+            flash("Only assembly files (.s, .asm) are allowed", "error")
             return render_template("inspector.html")
-        
+
         try:
             # Read assembly content with robust encoding handling
             content_bytes = asm_file.read()
-            asm_content = None
-            for encoding in ['utf-8', 'latin-1', 'cp1252']:
-                try:
-                    asm_content = content_bytes.decode(encoding)
-                    break
-                except UnicodeDecodeError:
-                    continue
-            
-            if asm_content is None:
-                asm_content = content_bytes.decode('utf-8', errors='replace')
-            
+            asm_content = decode_bytes(content_bytes)
+
             # Check file size (warn if >5MB)
             file_size_mb = len(asm_content) / (1024 * 1024)
             if file_size_mb > 5:
                 flash(f"Warning: Large file ({file_size_mb:.1f}MB) may take time to parse", "warning")
-            
+
             # Parse assembly and generate CFG
+            temp_path = None
             try:
-                # Create temporary file for parsing 
-                # Save to uploads directory to allow INCLUDE preprocessing
-                filename = secure_filename(asm_file.filename)
+                # Create temporary file for parsing.
+                # Save to uploads directory to allow INCLUDE preprocessing;
+                # random prefix avoids collisions between concurrent uploads.
+                filename = f"insp_{os.urandom(4).hex()}_{secure_filename(asm_file.filename)}"
                 temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                
+
                 with open(temp_path, 'wb') as f:
                     f.write(content_bytes)
-                
-                # For .ASM files, check if there's a companion .INC file
-                if filename.lower().endswith('.asm'):
-                    base_name = os.path.splitext(filename)[0]
-                    inc_filename = base_name + '.INC'
-                    inc_path = os.path.join(app.config['UPLOAD_FOLDER'], inc_filename)
-                    
-                    if os.path.exists(inc_path):
-                        logger.info(f"Found companion include file: {inc_filename}")
-                        flash(f"Found and using companion file: {inc_filename}", "success")
-                
+
                 # Parse the assembly file (preprocessor will handle INCLUDEs automatically)
                 G = parse_assembly_file(temp_path)
-                
-                # Generate PyVis visualization with hierarchical layout
-                net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="black", directed=True)
-                net.from_nx(G)
-                
-                # Configure hierarchical layout (waterfall/top-down)
-                net.set_options("""
-                {
-                  "layout": {
-                    "hierarchical": {
-                      "enabled": true,
-                      "direction": "UD",
-                      "sortMethod": "directed",
-                      "nodeSpacing": 150,
-                      "levelSeparation": 200,
-                      "treeSpacing": 200
-                    }
-                  },
-                  "physics": {
-                    "enabled": false
-                  },
-                  "edges": {
-                    "smooth": {
-                      "type": "cubicBezier",
-                      "forceDirection": "vertical"
-                    }
-                  }
-                }
-                """)
-                
-                # Style nodes and edges with line number metadata
-                for node in net.nodes:
-                    node['color'] = '#97c2fc'
-                    node['shape'] = 'box'
-                    node['font'] = {'face': 'monospace', 'align': 'left'}
-                    
-                    # Add line number metadata from NetworkX graph
-                    node_id = node['id']
-                    if node_id in G.nodes:
-                        node_data = G.nodes[node_id]
-                        start_line = node_data.get('start_line', -1)
-                        end_line = node_data.get('end_line', -1)
-                        
-                        # Add to title for visibility
-                        lines_info = f"Lines {start_line}-{end_line}" if start_line >= 0 else "No line info"
-                        node['title'] = f"{node_id}\n{lines_info}"
-                        
-                        # Store as custom data for JavaScript access
-                        node['start_line'] = start_line
-                        node['end_line'] = end_line
-                    
-                for edge in net.edges:
-                    edge['color'] = '#848484'
-                    edge['arrows'] = 'to'
-                
-                # Clean up old CFG files before generating new one
-                cleanup_old_cfg_files(max_age_hours=1)
-                
-                # Save to a string/file to embed
-                # PyVis save_graph saves to a file. We can save to static.
-                output_filename = f"cfg_{os.urandom(4).hex()}.html"
-                output_path = os.path.join('static', output_filename)
-                net.save_graph(output_path)
-                
-                # Inject interactive JavaScript for node clicking
-                inject_cfg_interaction_js(output_path)
-                
-                # Clean up temporary file
-                try:
-                    os.unlink(temp_path)
-                except Exception as e:
-                    logger.warning(f"Failed to clean up temp file: {e}")
-                
-                return render_template("inspector.html", 
+                output_filename = generate_cfg_visualization(G)
+
+                return render_template("inspector.html",
                                      assembly_code=asm_content,
                                      filename=asm_file.filename,
                                      file_size_mb=file_size_mb,
                                      cfg_html=output_filename)
-                                     
+
             except Exception as e:
                 logger.error(f"Error generating CFG: {e}")
                 flash(f"Error generating CFG: {e}", "warning")
-                return render_template("inspector.html", 
+                return render_template("inspector.html",
                                      assembly_code=asm_content,
                                      filename=asm_file.filename,
                                      file_size_mb=file_size_mb)
+            finally:
+                # Always clean up the temporary file
+                if temp_path and os.path.exists(temp_path):
+                    try:
+                        os.unlink(temp_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to clean up temp file: {e}")
         except Exception as e:
             logger.error(f"Error reading assembly file: {str(e)}")
             flash(f"Error reading file: {str(e)}", "error")
@@ -489,31 +443,67 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
             flash("Error loading graph files", "error")
             return render_template("index.html", visualized=False)
         
-        # Compare graphs
+        # Compare graphs by node name
         nodes_in_both, edges_in_both = compare_graphs(G1, G2)
-        
+
+        # Name-independent structural comparison (WL fingerprints)
+        struct = structural_similarity(G1, G2)
+
+        # When node names barely overlap (e.g. address-based IDs from two
+        # different binaries), name matching is meaningless — fall back to
+        # structural matching for the shared/unique classification
+        min_nodes = min(len(G1.nodes()), len(G2.nodes()))
+        name_overlap = len(nodes_in_both) / min_nodes if min_nodes else 0
+        match_mode = 'name' if name_overlap >= 0.05 else 'structure'
+
+        if match_mode == 'name':
+            common_nodes = len(nodes_in_both)
+            common_edges = len(edges_in_both)
+        else:
+            common_nodes = len(struct['matched_nodes_1'])
+            common_edges = len(struct['matched_edges_1'])
+
+        # Node-importance classification on the combined structure
+        importance = compute_node_importance(nx.compose(G1, G2))
+        top_nodes = sorted(importance.items(), key=lambda kv: kv[1]['score'], reverse=True)[:5]
+
         # Calculate statistics with filenames
         stats = {
             'g1_nodes': len(G1.nodes()),
             'g1_edges': len(G1.edges()),
             'g2_nodes': len(G2.nodes()),
             'g2_edges': len(G2.edges()),
-            'common_nodes': len(nodes_in_both),
-            'common_edges': len(edges_in_both),
-            'unique_g1_nodes': len(set(G1.nodes()) - nodes_in_both),
-            'unique_g2_nodes': len(set(G2.nodes()) - nodes_in_both),
+            'common_nodes': common_nodes,
+            'common_edges': common_edges,
+            'unique_g1_nodes': len(G1.nodes()) - common_nodes,
+            'unique_g2_nodes': len(G2.nodes()) - common_nodes,
+            'structural_score': round(struct['score'] * 100, 1),
+            'match_mode': match_mode,
+            'critical_nodes': sum(1 for d in importance.values() if d['tier'] == 'critical'),
+            'top_nodes': [
+                {
+                    'name': str(node),
+                    'tier': d['tier'],
+                    'score': round(d['score'], 2),
+                    'where': 'both' if node in nodes_in_both
+                             else (filename1 if node in G1.nodes() else filename2)
+                }
+                for node, d in top_nodes
+            ],
             'filename1': filename1,
             'filename2': filename2
         }
         
         # Create combined graph visualization
         combined = Network(
-            height="700px", 
-            width="100%", 
-            notebook=False, 
+            height="700px",
+            width="100%",
+            notebook=False,
             # heading=f"Comparison: {filename1} vs {filename2}",
-            bgcolor="#ffffff",
-            font_color="black"
+            bgcolor="#0e131b",
+            font_color="#aab7c9",
+            directed=True,
+            cdn_resources='remote'
         )
         
         # Set physics options for better layout
@@ -534,42 +524,76 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
         }
         """)
         
-        all_nodes = set(G1.nodes()).union(set(G2.nodes()))
-        all_edges = set(G1.edges()).union(set(G2.edges()))
-        
-        # Add nodes with colors
+        g1_nodes, g2_nodes = set(G1.nodes()), set(G2.nodes())
+        g1_edges, g2_edges = set(G1.edges()), set(G2.edges())
+        all_nodes = g1_nodes.union(g2_nodes)
+        all_edges = g1_edges.union(g2_edges)
+
+        # Add nodes with colors (provenance) and size/border (importance)
         for node in all_nodes:
-            if node in nodes_in_both:
-                color = "orange"
-                title = f"Node: {node} (in both graphs)"
-            elif node in G1.nodes():
-                color = "lightblue"
+            in_g1, in_g2 = node in g1_nodes, node in g2_nodes
+            if match_mode == 'name':
+                is_shared = node in nodes_in_both
+                shared_label = "in both graphs"
+            else:
+                is_shared = ((in_g1 and node in struct['matched_nodes_1'])
+                             or (in_g2 and node in struct['matched_nodes_2'])
+                             or (in_g1 and in_g2))
+                shared_label = "structure matched in both files"
+
+            if is_shared:
+                color = "#ffb454"   # amber — in both
+                title = f"Node: {node} ({shared_label})"
+            elif in_g1:
+                color = "#56c8ff"   # cyan — graph 1 only
                 title = f"Node: {node} (only in {filename1})"
             else:
-                color = "lightgreen"
+                color = "#6fdb8d"   # green — graph 2 only
                 title = f"Node: {node} (only in {filename2})"
-            combined.add_node(str(node), color=color, title=title)
+
+            imp = importance.get(node, {'score': 0.0, 'tier': 'normal'})
+            title += f"\nImportance: {imp['tier']} (score {imp['score']:.2f})"
+            node_kwargs = {'size': 10 + 18 * imp['score']}
+            if imp['tier'] == 'critical':
+                node_kwargs['borderWidth'] = 3
+                node_kwargs['color'] = {'background': color, 'border': '#ff5d5d'}
+            else:
+                node_kwargs['color'] = color
+            combined.add_node(str(node), title=title, **node_kwargs)
         
-        # Add edges with colors
+        # Add edges with colors. Direction matters in a CFG, so A->B and
+        # B->A are treated as different edges (matching the stats above).
         for u, v in all_edges:
-            if (u, v) in edges_in_both or (v, u) in edges_in_both:
-                color = "red"
-                title = "Edge in both graphs"
-            elif (u, v) in G1.edges() or (v, u) in G1.edges():
-                color = "blue"
+            if match_mode == 'name':
+                is_shared = (u, v) in edges_in_both
+                shared_label = "Edge in both graphs"
+            else:
+                is_shared = ((u, v) in struct['matched_edges_1']
+                             or (u, v) in struct['matched_edges_2'])
+                shared_label = "Edge structurally matched in both files"
+
+            if is_shared:
+                color = "#ff6b6b"   # red — in both
+                title = shared_label
+            elif (u, v) in g1_edges:
+                color = "#3d8bff"   # blue — graph 1 only
                 title = f"Edge only in {filename1}"
             else:
-                color = "green"
+                color = "#2ecc71"   # green — graph 2 only
                 title = f"Edge only in {filename2}"
             combined.add_edge(str(u), str(v), color=color, title=title)
         
-        # Save graph
-        output_path = "static/combined_graph.html"
+        # Clean up old generated graphs, then save under a unique name so
+        # concurrent users don't overwrite each other's results
+        cleanup_old_cfg_files(max_age_hours=1)
+        output_filename = f"combined_{os.urandom(4).hex()}.html"
+        output_path = os.path.join(STATIC_DIR, output_filename)
         combined.save_graph(output_path)
-        
+        apply_dark_chrome(output_path)
+
         # Add legend to the graph with actual filenames
-        add_legend_to_html(output_path, filename1, filename2)
-        
+        add_legend_to_html(output_path, filename1, filename2, match_mode)
+
         # Cleanup temporary files
         if cleanup:
             try:
@@ -577,9 +601,10 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
                 os.remove(graph2_path)
             except Exception as e:
                 logger.warning(f"Error cleaning up files: {str(e)}")
-        
+
         flash("Graphs compared successfully!", "success")
-        return render_template("index.html", visualized=True, stats=stats)
+        return render_template("index.html", visualized=True, stats=stats,
+                               graph_file=output_filename)
         
     except Exception as e:
         logger.error(f"Error processing graphs: {str(e)}")

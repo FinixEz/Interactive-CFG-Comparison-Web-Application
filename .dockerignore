@@ -1,0 +1,11 @@
+# Everything except what the image needs
+*
+!webapp/
+!requirements-production.txt
+
+# Exclusions within webapp
+webapp/uploads/
+webapp/static/cfg_*.html
+webapp/static/combined_*.html
+webapp/__pycache__/
+webapp/**/__pycache__/

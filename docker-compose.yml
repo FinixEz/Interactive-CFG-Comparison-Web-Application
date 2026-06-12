@@ -1,0 +1,11 @@
+services:
+  cfg-webapp:
+    build: .
+    container_name: cfg-webapp
+    # NOTE: Docker-published ports bypass ufw. Local-only by default;
+    # use "5000:5000" to expose the app to the whole LAN.
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    restart: unless-stopped
