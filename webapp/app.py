@@ -3,6 +3,7 @@ from visualize_compare import (load_cfg_json, compare_graphs, add_legend_to_html
                                compute_node_importance, structural_similarity,
                                apply_dark_chrome)
 from asm_parser import parse_assembly_file
+from fingerprint_db import list_baselines, add_baseline, match_against_db
 from pyvis.network import Network
 import networkx as nx
 from werkzeug.utils import secure_filename
@@ -461,175 +462,297 @@ def inspect():
     return render_template("inspector.html")
 
 
+VERDICT_TIERS = ((70, 'strong'), (30, 'related'), (10, 'weak'))
+
+
+def _verdict(score):
+    """Coarse human label for a similarity percentage."""
+    for threshold, label in VERDICT_TIERS:
+        if score >= threshold:
+            return label
+    return 'none'
+
+
+@app.route("/identify", methods=["GET", "POST"])
+def identify():
+    """Single-file identification against the baseline fingerprint database."""
+    def baseline_summaries():
+        return [{'name': b['name'], 'nodes': b['nodes'], 'edges': b['edges']}
+                for b in list_baselines()]
+
+    if request.method != "POST":
+        return render_template("identify.html", baselines=baseline_summaries())
+
+    # Branch 1: register a new baseline fingerprint
+    if 'register' in request.form:
+        bl_file = request.files.get('baseline_file')
+        if not bl_file or bl_file.filename == '':
+            flash("Please select a file to register", "error")
+            return render_template("identify.html", baselines=baseline_summaries())
+        if not allowed_file(bl_file.filename):
+            flash("Only .json, .s and .asm files can be registered", "error")
+            return render_template("identify.html", baselines=baseline_summaries())
+        temp_path = os.path.join(
+            app.config['UPLOAD_FOLDER'],
+            f"bl_{os.urandom(4).hex()}_{secure_filename(bl_file.filename)}")
+        try:
+            bl_file.save(temp_path)
+            G = load_graph_from_file(temp_path)
+            name = (request.form.get('baseline_name', '').strip()
+                    or os.path.splitext(bl_file.filename)[0])
+            slug = add_baseline(name, G)
+            flash(f"Baseline '{slug}' registered ({G.number_of_nodes()} nodes, "
+                  f"{G.number_of_edges()} edges)", "success")
+        except Exception as e:
+            logger.error(f"Error registering baseline: {e}")
+            flash(f"Error registering baseline: {e}", "error")
+        finally:
+            if os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp file: {e}")
+        return render_template("identify.html", baselines=baseline_summaries())
+
+    # Branch 2: identify a file against the database
+    temp_path = None
+    if 'sample' in request.form:
+        target_path = os.path.join(STATIC_DIR, "anthrax.asm")
+        target_name = "anthrax.asm"
+    else:
+        target = request.files.get('target')
+        if not target or target.filename == '':
+            flash("Please select a file to identify", "error")
+            return render_template("identify.html", baselines=baseline_summaries())
+        if not allowed_file(target.filename):
+            flash("Only .json, .s and .asm files are supported", "error")
+            return render_template("identify.html", baselines=baseline_summaries())
+        temp_path = os.path.join(
+            app.config['UPLOAD_FOLDER'],
+            f"id_{os.urandom(4).hex()}_{secure_filename(target.filename)}")
+        target.save(temp_path)
+        target_path = temp_path
+        target_name = target.filename
+
+    try:
+        G = load_graph_from_file(target_path)
+        results = match_against_db(G)
+        for r in results:
+            r['verdict'] = _verdict(r['score'])
+
+        if not results:
+            flash("The fingerprint database is empty — register a baseline first",
+                  "warning")
+            return render_template("identify.html", baselines=baseline_summaries(),
+                                   target_name=target_name,
+                                   target_nodes=G.number_of_nodes(),
+                                   target_edges=G.number_of_edges())
+
+        # Render the full comparison against the best match
+        stats = graph_file = None
+        best = results[0]
+        if best['score'] > 0:
+            G_best = load_cfg_json(best['path'])
+            stats, graph_file = build_comparison(
+                G, G_best, target_name, f"{best['name']} (baseline)")
+
+        return render_template("identify.html", baselines=baseline_summaries(),
+                               results=results, target_name=target_name,
+                               target_nodes=G.number_of_nodes(),
+                               target_edges=G.number_of_edges(),
+                               stats=stats, graph_file=graph_file)
+    except Exception as e:
+        logger.error(f"Error identifying file: {e}")
+        flash(f"Error identifying file: {e}", "error")
+        return render_template("identify.html", baselines=baseline_summaries())
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp file: {e}")
+
+
+def build_comparison(G1, G2, filename1="Graph 1", filename2="Graph 2"):
+    """
+    Compare two loaded graphs and render the combined visualization.
+
+    Returns (stats, output_filename); output_filename is relative to static/.
+    Used by the two-file comparison page and the identify-against-baseline page.
+    """
+    # Compare graphs by node name
+    nodes_in_both, edges_in_both = compare_graphs(G1, G2)
+
+    # Name-independent structural comparison (WL fingerprints)
+    struct = structural_similarity(G1, G2)
+
+    # When node names barely overlap (e.g. address-based IDs from two
+    # different binaries), name matching is meaningless — fall back to
+    # structural matching for the shared/unique classification
+    min_nodes = min(len(G1.nodes()), len(G2.nodes()))
+    name_overlap = len(nodes_in_both) / min_nodes if min_nodes else 0
+    match_mode = 'name' if name_overlap >= NAME_OVERLAP_THRESHOLD else 'structure'
+
+    if match_mode == 'name':
+        common_nodes = len(nodes_in_both)
+        common_edges = len(edges_in_both)
+    else:
+        common_nodes = len(struct['matched_nodes_1'])
+        common_edges = len(struct['matched_edges_1'])
+
+    # Node-importance classification on the combined structure
+    combined_graph = nx.compose(G1, G2)
+    importance = compute_node_importance(combined_graph)
+    top_nodes = sorted(importance.items(), key=lambda kv: kv[1]['score'], reverse=True)[:5]
+
+    # Calculate statistics with filenames
+    stats = {
+        'g1_nodes': len(G1.nodes()),
+        'g1_edges': len(G1.edges()),
+        'g2_nodes': len(G2.nodes()),
+        'g2_edges': len(G2.edges()),
+        'common_nodes': common_nodes,
+        'common_edges': common_edges,
+        'unique_g1_nodes': len(G1.nodes()) - common_nodes,
+        'unique_g2_nodes': len(G2.nodes()) - common_nodes,
+        'structural_score': round(struct['score'] * 100, 1),
+        'match_mode': match_mode,
+        'critical_nodes': sum(1 for d in importance.values() if d['tier'] == 'critical'),
+        'top_nodes': [
+            {
+                'name': str(node),
+                'tier': d['tier'],
+                'score': round(d['score'], 2),
+                'where': 'both' if node in nodes_in_both
+                         else (filename1 if node in G1.nodes() else filename2)
+            }
+            for node, d in top_nodes
+        ],
+        'filename1': filename1,
+        'filename2': filename2
+    }
+
+    # Create combined graph visualization
+    combined = Network(
+        height="700px",
+        width="100%",
+        notebook=False,
+        bgcolor="#0e131b",
+        font_color="#aab7c9",
+        directed=True,
+        cdn_resources='remote'
+    )
+
+    # Set physics options for better layout
+    combined.set_options("""
+    {
+      "physics": {
+        "forceAtlas2Based": {
+          "gravitationalConstant": -50,
+          "centralGravity": 0.01,
+          "springLength": 100,
+          "springConstant": 0.08
+        },
+        "maxVelocity": 50,
+        "solver": "forceAtlas2Based",
+        "timestep": 0.35,
+        "stabilization": {"iterations": 150}
+      }
+    }
+    """)
+
+    g1_nodes, g2_nodes = set(G1.nodes()), set(G2.nodes())
+    g1_edges, g2_edges = set(G1.edges()), set(G2.edges())
+
+    # Cap what we render (stats above already cover the full graphs)
+    render_graph, dropped = truncate_to_important(combined_graph, importance)
+    if dropped:
+        flash(f"Large graph: rendering the {render_graph.number_of_nodes()} "
+              f"most important nodes ({dropped} hidden — stats cover all)",
+              "warning")
+    all_nodes = set(render_graph.nodes())
+    all_edges = set(render_graph.edges())
+
+    # Add nodes with colors (provenance) and size/border (importance)
+    for node in all_nodes:
+        in_g1, in_g2 = node in g1_nodes, node in g2_nodes
+        if match_mode == 'name':
+            is_shared = node in nodes_in_both
+            shared_label = "in both graphs"
+        else:
+            is_shared = ((in_g1 and node in struct['matched_nodes_1'])
+                         or (in_g2 and node in struct['matched_nodes_2'])
+                         or (in_g1 and in_g2))
+            shared_label = "structure matched in both files"
+
+        if is_shared:
+            color = "#ffb454"   # amber — in both
+            title = f"Node: {node} ({shared_label})"
+        elif in_g1:
+            color = "#56c8ff"   # cyan — graph 1 only
+            title = f"Node: {node} (only in {filename1})"
+        else:
+            color = "#6fdb8d"   # green — graph 2 only
+            title = f"Node: {node} (only in {filename2})"
+
+        imp = importance.get(node, {'score': 0.0, 'tier': 'normal'})
+        title += f"\nImportance: {imp['tier']} (score {imp['score']:.2f})"
+        node_kwargs = {'size': 10 + 18 * imp['score']}
+        if imp['tier'] == 'critical':
+            node_kwargs['borderWidth'] = 3
+            node_kwargs['color'] = {'background': color, 'border': '#ff5d5d'}
+        else:
+            node_kwargs['color'] = color
+        combined.add_node(str(node), title=title, **node_kwargs)
+
+    # Add edges with colors. Direction matters in a CFG, so A->B and
+    # B->A are treated as different edges (matching the stats above).
+    for u, v in all_edges:
+        if match_mode == 'name':
+            is_shared = (u, v) in edges_in_both
+            shared_label = "Edge in both graphs"
+        else:
+            is_shared = ((u, v) in struct['matched_edges_1']
+                         or (u, v) in struct['matched_edges_2'])
+            shared_label = "Edge structurally matched in both files"
+
+        if is_shared:
+            color = "#ff6b6b"   # red — in both
+            title = shared_label
+        elif (u, v) in g1_edges:
+            color = "#3d8bff"   # blue — graph 1 only
+            title = f"Edge only in {filename1}"
+        else:
+            color = "#2ecc71"   # green — graph 2 only
+            title = f"Edge only in {filename2}"
+        combined.add_edge(str(u), str(v), color=color, title=title)
+
+    # Clean up old generated graphs, then save under a unique name so
+    # concurrent users don't overwrite each other's results
+    cleanup_old_cfg_files(max_age_hours=1)
+    output_filename = f"combined_{os.urandom(4).hex()}.html"
+    output_path = os.path.join(STATIC_DIR, output_filename)
+    combined.save_graph(output_path)
+    apply_dark_chrome(output_path)
+
+    # Add legend to the graph with actual filenames
+    add_legend_to_html(output_path, filename1, filename2, match_mode)
+
+    return stats, output_filename
+
+
 def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1", filename2="Graph 2"):
     """Process and visualize graph comparison"""
     try:
         # Load the graphs (supports both JSON and assembly)
         G1 = load_graph_from_file(graph1_path)
         G2 = load_graph_from_file(graph2_path)
-        
+
         if G1 is None or G2 is None:
             flash("Error loading graph files", "error")
             return render_template("index.html", visualized=False)
-        
-        # Compare graphs by node name
-        nodes_in_both, edges_in_both = compare_graphs(G1, G2)
 
-        # Name-independent structural comparison (WL fingerprints)
-        struct = structural_similarity(G1, G2)
-
-        # When node names barely overlap (e.g. address-based IDs from two
-        # different binaries), name matching is meaningless — fall back to
-        # structural matching for the shared/unique classification
-        min_nodes = min(len(G1.nodes()), len(G2.nodes()))
-        name_overlap = len(nodes_in_both) / min_nodes if min_nodes else 0
-        match_mode = 'name' if name_overlap >= NAME_OVERLAP_THRESHOLD else 'structure'
-
-        if match_mode == 'name':
-            common_nodes = len(nodes_in_both)
-            common_edges = len(edges_in_both)
-        else:
-            common_nodes = len(struct['matched_nodes_1'])
-            common_edges = len(struct['matched_edges_1'])
-
-        # Node-importance classification on the combined structure
-        combined_graph = nx.compose(G1, G2)
-        importance = compute_node_importance(combined_graph)
-        top_nodes = sorted(importance.items(), key=lambda kv: kv[1]['score'], reverse=True)[:5]
-
-        # Calculate statistics with filenames
-        stats = {
-            'g1_nodes': len(G1.nodes()),
-            'g1_edges': len(G1.edges()),
-            'g2_nodes': len(G2.nodes()),
-            'g2_edges': len(G2.edges()),
-            'common_nodes': common_nodes,
-            'common_edges': common_edges,
-            'unique_g1_nodes': len(G1.nodes()) - common_nodes,
-            'unique_g2_nodes': len(G2.nodes()) - common_nodes,
-            'structural_score': round(struct['score'] * 100, 1),
-            'match_mode': match_mode,
-            'critical_nodes': sum(1 for d in importance.values() if d['tier'] == 'critical'),
-            'top_nodes': [
-                {
-                    'name': str(node),
-                    'tier': d['tier'],
-                    'score': round(d['score'], 2),
-                    'where': 'both' if node in nodes_in_both
-                             else (filename1 if node in G1.nodes() else filename2)
-                }
-                for node, d in top_nodes
-            ],
-            'filename1': filename1,
-            'filename2': filename2
-        }
-        
-        # Create combined graph visualization
-        combined = Network(
-            height="700px",
-            width="100%",
-            notebook=False,
-            # heading=f"Comparison: {filename1} vs {filename2}",
-            bgcolor="#0e131b",
-            font_color="#aab7c9",
-            directed=True,
-            cdn_resources='remote'
-        )
-        
-        # Set physics options for better layout
-        combined.set_options("""
-        {
-          "physics": {
-            "forceAtlas2Based": {
-              "gravitationalConstant": -50,
-              "centralGravity": 0.01,
-              "springLength": 100,
-              "springConstant": 0.08
-            },
-            "maxVelocity": 50,
-            "solver": "forceAtlas2Based",
-            "timestep": 0.35,
-            "stabilization": {"iterations": 150}
-          }
-        }
-        """)
-        
-        g1_nodes, g2_nodes = set(G1.nodes()), set(G2.nodes())
-        g1_edges, g2_edges = set(G1.edges()), set(G2.edges())
-
-        # Cap what we render (stats above already cover the full graphs)
-        render_graph, dropped = truncate_to_important(combined_graph, importance)
-        if dropped:
-            flash(f"Large graph: rendering the {render_graph.number_of_nodes()} "
-                  f"most important nodes ({dropped} hidden — stats cover all)",
-                  "warning")
-        all_nodes = set(render_graph.nodes())
-        all_edges = set(render_graph.edges())
-
-        # Add nodes with colors (provenance) and size/border (importance)
-        for node in all_nodes:
-            in_g1, in_g2 = node in g1_nodes, node in g2_nodes
-            if match_mode == 'name':
-                is_shared = node in nodes_in_both
-                shared_label = "in both graphs"
-            else:
-                is_shared = ((in_g1 and node in struct['matched_nodes_1'])
-                             or (in_g2 and node in struct['matched_nodes_2'])
-                             or (in_g1 and in_g2))
-                shared_label = "structure matched in both files"
-
-            if is_shared:
-                color = "#ffb454"   # amber — in both
-                title = f"Node: {node} ({shared_label})"
-            elif in_g1:
-                color = "#56c8ff"   # cyan — graph 1 only
-                title = f"Node: {node} (only in {filename1})"
-            else:
-                color = "#6fdb8d"   # green — graph 2 only
-                title = f"Node: {node} (only in {filename2})"
-
-            imp = importance.get(node, {'score': 0.0, 'tier': 'normal'})
-            title += f"\nImportance: {imp['tier']} (score {imp['score']:.2f})"
-            node_kwargs = {'size': 10 + 18 * imp['score']}
-            if imp['tier'] == 'critical':
-                node_kwargs['borderWidth'] = 3
-                node_kwargs['color'] = {'background': color, 'border': '#ff5d5d'}
-            else:
-                node_kwargs['color'] = color
-            combined.add_node(str(node), title=title, **node_kwargs)
-        
-        # Add edges with colors. Direction matters in a CFG, so A->B and
-        # B->A are treated as different edges (matching the stats above).
-        for u, v in all_edges:
-            if match_mode == 'name':
-                is_shared = (u, v) in edges_in_both
-                shared_label = "Edge in both graphs"
-            else:
-                is_shared = ((u, v) in struct['matched_edges_1']
-                             or (u, v) in struct['matched_edges_2'])
-                shared_label = "Edge structurally matched in both files"
-
-            if is_shared:
-                color = "#ff6b6b"   # red — in both
-                title = shared_label
-            elif (u, v) in g1_edges:
-                color = "#3d8bff"   # blue — graph 1 only
-                title = f"Edge only in {filename1}"
-            else:
-                color = "#2ecc71"   # green — graph 2 only
-                title = f"Edge only in {filename2}"
-            combined.add_edge(str(u), str(v), color=color, title=title)
-        
-        # Clean up old generated graphs, then save under a unique name so
-        # concurrent users don't overwrite each other's results
-        cleanup_old_cfg_files(max_age_hours=1)
-        output_filename = f"combined_{os.urandom(4).hex()}.html"
-        output_path = os.path.join(STATIC_DIR, output_filename)
-        combined.save_graph(output_path)
-        apply_dark_chrome(output_path)
-
-        # Add legend to the graph with actual filenames
-        add_legend_to_html(output_path, filename1, filename2, match_mode)
+        stats, output_filename = build_comparison(G1, G2, filename1, filename2)
 
         # Cleanup temporary files
         if cleanup:
@@ -642,7 +765,7 @@ def process_graphs(graph1_path, graph2_path, cleanup=False, filename1="Graph 1",
         flash("Graphs compared successfully!", "success")
         return render_template("index.html", visualized=True, stats=stats,
                                graph_file=output_filename)
-        
+
     except Exception as e:
         logger.error(f"Error processing graphs: {str(e)}")
         flash(f"Error processing graphs: {str(e)}", "error")

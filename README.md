@@ -28,7 +28,14 @@ A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFG
 - **Node-Importance Classification**: Nodes are ranked by betweenness/degree centrality and tiered (critical / high / normal) — node size reflects the score, critical nodes get a red border, and the top-ranked nodes are listed with the statistics
 - **Sample Data**: Quick-start with pre-loaded sample graphs
 
-### 2. **Assembly Inspector**
+### 2. **Single-File Identification (Fingerprint Database)**
+- **Upload one file**, get it ranked against every baseline in the fingerprint database by structural similarity — the original triage workflow: "what known sample does this look like?"
+- **Baselines store derived data only**: each registered baseline is the CFG as node-link JSON, never the source file — so the repo can ship fingerprints of malware without shipping malware
+- **Verdict tiers** (strong / related / weak / none) plus matched-block counts per baseline, and a full comparison visualization against the best match
+- **Register new baselines** from any supported file (`.json`, `.s`, `.asm`) directly on the page
+- Ships seeded with fingerprints of the theZoo samples (anthrax, whore, relock) and the Bodmas-derived demo graphs
+
+### 3. **Assembly Inspector**
 - **Real-time CFG Generation**: Upload assembly files and instantly generate control flow graphs
 - **Interactive Code Highlighting**: Click on CFG nodes to highlight corresponding assembly code
 - **Hierarchical Layout**: Top-down waterfall visualization for better code flow understanding
@@ -36,7 +43,7 @@ A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFG
 - **Large File Handling**: Robust encoding detection and efficient parsing for large assembly files
 - **MASM Preprocessor**: Automatic handling of INCLUDE directives for MASM assembly files
 
-### 3. **Technical Capabilities**
+### 4. **Technical Capabilities**
 - **Assembly Parsing**: Lightweight built-in parser (label/jump analysis) for x86/x86_64 and ARM64 assembly; `angr` is used offline to extract CFGs from binaries (see `convertpkltojson.py`)
 - **Graph Analysis**: Built on NetworkX for robust graph operations
 - **Responsive Design**: Modern, mobile-friendly interface
@@ -120,6 +127,17 @@ The application will start on `http://localhost:5000`
    - Click "Try Sample Data" to load pre-configured examples
 4. View the interactive comparison graph with statistics
 
+### Using Single-File Identification
+
+1. Navigate to `/identify`
+2. Upload the file under investigation (`.json`, `.s`, `.asm`) — or click
+   "Identify sample" to run the bundled anthrax.asm against the database
+3. Read the match report: every baseline ranked by structural similarity,
+   with verdict tiers and matched-block counts
+4. Inspect the rendered comparison against the best-matching baseline
+5. To grow the database, register new baselines at the bottom of the page
+   (only the derived CFG structure is stored)
+
 ### Using the Assembly Inspector
 
 1. Navigate to `/inspect`
@@ -140,8 +158,11 @@ Interactive-CFG-Comparison-Web-Application/
 │   ├── app.py                  # Flask application server
 │   ├── asm_parser.py           # Assembly parsing and CFG generation
 │   ├── visualize_compare.py    # Graph comparison and visualization
+│   ├── fingerprint_db.py       # Baseline fingerprint database
+│   ├── baselines/              # Stored CFG fingerprints (node-link JSON)
 │   ├── templates/              # HTML templates
 │   │   ├── index.html         # CFG comparison page
+│   │   ├── identify.html      # Single-file identification page
 │   │   └── inspector.html     # Assembly inspector page
 │   └── static/                # Static assets and generated graphs
 │       ├── style.css          # Application styling
@@ -182,6 +203,7 @@ Docker build on every push.
 | `MAX_VIS_NODES` | `800` | Max nodes rendered per graph view (stats always cover full graphs) |
 | `NAME_OVERLAP_THRESHOLD` | `0.05` | Name-overlap fraction below which comparison falls back to structural matching |
 | `UPLOAD_FOLDER` | `webapp/uploads` | Where uploads are written |
+| `BASELINE_DIR` | `webapp/baselines` | Where baseline CFG fingerprints are stored |
 
 ## 🔧 Key Technologies
 

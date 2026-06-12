@@ -60,6 +60,35 @@ def test_upload_comparison_and_legend_escaping(client):
     assert 'evil&lt;script&gt;' in generated
 
 
+def test_identify_page_lists_baselines(client):
+    r = client.get('/identify')
+    assert r.status_code == 200
+    assert 'fingerprint database' in r.get_data(as_text=True)
+
+
+def test_identify_sample_matches_anthrax_baseline(client):
+    r = client.post('/identify', data={'sample': '1'})
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    # The sample is anthrax.asm and the seeded DB contains its fingerprint:
+    # it must be reported as a strong match
+    assert 'anthrax' in body
+    assert 'strong' in body
+
+
+def test_register_baseline(client, monkeypatch, tmp_path):
+    import fingerprint_db as fdb
+    monkeypatch.setattr(fdb, 'BASELINE_DIR', str(tmp_path))
+    r = client.post('/identify', data={
+        'register': '1',
+        'baseline_name': 'tiny',
+        'baseline_file': (_json_file(['a', 'b'], [['a', 'b']]), 't.json'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 200
+    assert b'registered' in r.data
+    assert (tmp_path / 'tiny.json').exists()
+
+
 def test_large_graph_render_is_capped(client, monkeypatch):
     monkeypatch.setattr(webapp, 'MAX_VIS_NODES', 5)
     nodes = [f'n{i}' for i in range(12)]
