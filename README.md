@@ -1,6 +1,7 @@
 # Interactive CFG Comparison Web Application
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://interactive-cfg-comparison-web.onrender.com)
+[![CI](https://github.com/FinixEz/Interactive-CFG-Comparison-Web-Application/actions/workflows/ci.yml/badge.svg)](https://github.com/FinixEz/Interactive-CFG-Comparison-Web-Application/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.1.2-green.svg)](https://flask.palletsprojects.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -146,21 +147,49 @@ Interactive-CFG-Comparison-Web-Application/
 │       ├── style.css          # Application styling
 │       ├── *.json             # Sample CFG files
 │       └── *.asm              # Sample assembly files
+├── tests/                      # Pytest suite (parser, similarity, routes)
+├── .github/workflows/ci.yml   # CI: pytest + Docker build on every push
 ├── requirements.txt            # Full Python dependencies (incl. angr utilities)
 ├── requirements-production.txt # Web application dependencies only
+├── requirements-dev.txt        # Production deps + pytest
 ├── convertpkltojson.py        # Utility: Convert pickle to JSON
 ├── mockupdata.py              # Utility: Generate mock data
 ├── pkl.py                     # Utility: Visualize a pickled angr CFG
 └── README.md                  # This file
 ```
 
+## 🧪 Testing
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+The suite covers the assembly parser (GAS and TASM/MASM label forms, comment
+blocks, jump qualifiers, fall-through rules), structural-similarity invariants
+(a graph vs. a renamed copy of itself scores 100%; unrelated structures score
+near zero), the Flask routes, and a regression test for filename escaping in
+generated graphs. Tests that depend on local malware sources skip automatically
+when those files are absent, so the suite runs anywhere. CI runs it plus a
+Docker build on every push.
+
+## ⚙️ Configuration
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `SECRET_KEY` | dev placeholder | Flask session signing — set a real value in production |
+| `BIND_ADDR` | `127.0.0.1` | Address Docker Compose publishes on; `0.0.0.0` exposes to the network |
+| `MAX_VIS_NODES` | `800` | Max nodes rendered per graph view (stats always cover full graphs) |
+| `NAME_OVERLAP_THRESHOLD` | `0.05` | Name-overlap fraction below which comparison falls back to structural matching |
+| `UPLOAD_FOLDER` | `webapp/uploads` | Where uploads are written |
+
 ## 🔧 Key Technologies
 
 - **Backend**: Flask (Python web framework)
-- **Graph Processing**: NetworkX, angr, asmcfg
+- **Graph Processing**: NetworkX
 - **Visualization**: PyVis, Vis.js
 - **Frontend**: HTML5, CSS3, JavaScript
-- **Assembly Analysis**: Capstone, angr, pyvex
+- **Assembly Analysis**: lightweight built-in parser (web app); angr/pyvex for the offline utilities
 
 ## 📊 Supported File Formats
 
@@ -209,10 +238,10 @@ The CFG uses a top-down hierarchical layout:
 ### Graph Comparison Algorithm
 1. Load both graphs (JSON or assembly)
 2. Compute the name-based intersection of nodes and (direction-sensitive) edges
-3. Compute name-independent **structural similarity** using Weisfeiler-Lehman subgraph hashes: each node gets a depth-3 neighborhood fingerprint; the similarity score is the multiset-Jaccard of all fingerprints
-4. If node names barely overlap (< 5% of the smaller graph — e.g. address-based CFG IDs from two different binaries), shared/unique classification automatically falls back to **structural matching**: a node counts as "common" when its control-flow neighborhood pattern also occurs in the other graph
+3. Compute name-independent **structural similarity** using Weisfeiler-Lehman subgraph hashes, seeded with in/out-degree labels (plus block-size buckets for parsed assembly): each node gets a depth-3 neighborhood fingerprint; the similarity score is the multiset-Jaccard of all fingerprints
+4. If node names barely overlap (< 5% of the smaller graph — e.g. address-based CFG IDs from two different binaries; tunable via `NAME_OVERLAP_THRESHOLD`), shared/unique classification automatically falls back to **structural matching**: a node counts as "common" when its control-flow neighborhood pattern also occurs in the other graph. Matching is graded — the deepest agreeing fingerprint wins (minimum 2 of 3 WL iterations), so a single edit deep in a neighborhood doesn't void an otherwise-identical block
 5. Classify node importance on the combined graph (60% betweenness + 40% degree centrality, normalized; top 10% = critical, next 20% = high)
-6. Color-code nodes/edges by presence, size nodes by importance
+6. Color-code nodes/edges by presence, size nodes by importance; graphs beyond `MAX_VIS_NODES` (default 800) render only their most important nodes — statistics always cover the full graphs
 7. Generate interactive visualization with legend
 
 > **Scope note**: name-based matching is exact — it is meaningful for related
@@ -223,6 +252,7 @@ The CFG uses a top-down hierarchical layout:
 ## 🛡️ Security Features
 
 - Secure filename handling with `werkzeug.secure_filename`
+- HTML-escaping of user-controlled filenames in generated graph pages
 - File size limits (16MB maximum)
 - File type validation (whitelist-based)
 - Automatic cleanup of temporary files
