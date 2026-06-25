@@ -1,183 +1,203 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}CFG//DIFF · Identify{% endblock %}
+{% block header_suffix %} <span style="color: var(--muted); font-weight: 400;">/ Identify</span>{% endblock %}
+{% block tagline %}Upload one file to match against the fingerprint database{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFG//DIFF · Identify</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-
-<body>
-    <div class="container">
-        <header class="console-header rise">
-            <div class="brand">
-                <div class="brand-mark">&gt;_</div>
-                <div>
-                    <h1>CFG<span class="slash">//</span>DIFF <span style="color: var(--muted); font-weight: 400;">/ identify</span></h1>
-                    <p class="tagline">one file in &rarr; ranked against the fingerprint database</p>
-                </div>
-            </div>
-            <div class="nav-group">
-                <a href="/" class="nav-btn">comparison tool</a>
-                <a href="/inspect" class="nav-btn">assembly inspector <span>&rarr;</span></a>
-            </div>
-        </header>
-
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} rise">
-            <span>{% if category == 'success' %}&#10003;{% else %}&#9888;{% endif %}</span>
-            {{ message }}
-        </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
-
-        <!-- Identify Form -->
-        <section class="upload-section rise d1">
-            <h2 class="sec-title">identify file</h2>
-            <form action="/identify" method="post" enctype="multipart/form-data">
-                <label class="dropzone g1" for="target" style="margin-bottom: 1rem;">
-                    <span class="dz-tag t-g1">file under investigation</span>
-                    <span class="dz-hint">.json &middot; .s &middot; .asm</span>
-                    <span class="file-name" id="target-name">no file selected</span>
-                    <input type="file" name="target" id="target" accept=".json,.s,.asm" required>
-                </label>
-                <div class="button-row">
-                    <button type="submit" class="btn btn-primary">Identify against database</button>
-                    <button type="submit" name="sample" value="1" class="btn btn-ghost">Identify sample (anthrax.asm)</button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Match Results -->
-        {% if results %}
-        <section class="stats-section rise d2">
-            <h2 class="sec-title">match report</h2>
-            <div class="comparison-header">
-                <div class="file-badge f1">{{ target_name }}</div>
-                <div class="vs-divider">VS</div>
-                <div class="file-badge f2">fingerprint database ({{ results|length }} baseline{{ 's' if results|length != 1 }})</div>
-            </div>
-            <p class="importance-sub" style="margin-bottom: 0.8rem;">
-                {{ target_nodes }} nodes &middot; {{ target_edges }} edges &middot;
-                scores are name-independent WL structural similarity
-            </p>
-            <table class="imp-table">
-                <thead>
-                    <tr>
-                        <th>baseline</th>
-                        <th>size</th>
-                        <th style="min-width: 180px;">similarity</th>
-                        <th>matched blocks</th>
-                        <th>verdict</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in results %}
-                    <tr>
-                        <td class="node-name">{{ r.name }}</td>
-                        <td>{{ r.nodes }}n / {{ r.edges }}e</td>
-                        <td>
-                            <div class="meter" style="margin-bottom: 0.25rem;"><span style="width: {{ r.score }}%;"></span></div>
-                            {{ r.score }}%
-                        </td>
-                        <td>{{ r.matched }}/{{ target_nodes }} ({{ r.matched_pct }}%)</td>
-                        <td><span class="chip {{ r.verdict }}">{{ r.verdict }}</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </section>
-        {% endif %}
-
-        <!-- Comparison vs best match -->
-        {% if graph_file and stats %}
-        <section class="visualization-section rise d3">
-            <h2 class="sec-title">vs best match</h2>
-            <div class="viewport">
-                <div class="viewport-bar">
-                    <span class="vp-title">{{ stats.filename1 }} &nbsp;vs&nbsp; {{ stats.filename2 }}</span>
-                    <span class="mode-chip">{{ 'structural match' if stats.match_mode == 'structure' else 'name match' }}</span>
-                </div>
-                <iframe src="{{ url_for('static', filename=graph_file) }}" class="graph-iframe"
-                    title="Comparison against best matching baseline"></iframe>
-            </div>
-        </section>
-        {% endif %}
-
-        <!-- Baseline DB -->
-        <section class="stats-section rise d3">
-            <h2 class="sec-title">fingerprint database</h2>
-            {% if baselines %}
-            <table class="imp-table" style="margin-bottom: 1.2rem;">
-                <thead>
-                    <tr><th>baseline</th><th>nodes</th><th>edges</th></tr>
-                </thead>
-                <tbody>
-                    {% for b in baselines %}
-                    <tr>
-                        <td class="node-name">{{ b.name }}</td>
-                        <td>{{ b.nodes }}</td>
-                        <td>{{ b.edges }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p class="importance-sub" style="margin-bottom: 1rem;">database is empty — register a first baseline below</p>
+{% block content %}
+<!-- Identify Form -->
+<section class="upload-section">
+    <h2 class="sec-title">Identify file</h2>
+    <form action="/identify" method="post" enctype="multipart/form-data" id="identify-form">
+        <label class="dropzone g1" for="target" style="margin-bottom: 1rem;">
+            <span class="dz-tag t-g1">File under investigation</span>
+            <span class="dz-hint">.json · .s · .asm</span>
+            <span class="file-name" id="target-name">no file selected</span>
+            <input type="file" name="target" id="target" accept=".json,.s,.asm" required>
+        </label>
+        <div class="button-row">
+            <button type="submit" class="btn btn-primary" id="submit-btn">Identify against database</button>
+            <button type="submit" name="sample" value="1" class="btn btn-ghost">Use sample (anthrax.asm)</button>
+            {% if results %}
+            <a href="/identify" class="btn btn-ghost">Identify again</a>
             {% endif %}
+        </div>
+    </form>
+</section>
 
-            <form action="/identify" method="post" enctype="multipart/form-data"
-                style="display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;">
-                <input type="hidden" name="register" value="1">
-                <label for="baseline_file" class="btn btn-ghost" style="cursor: pointer;">+ baseline file</label>
-                <input type="file" name="baseline_file" id="baseline_file" accept=".json,.s,.asm"
-                    required style="display: none;">
-                <span class="file-name" id="baseline-name-display">no file selected</span>
-                <input type="text" name="baseline_name" placeholder="baseline name (optional)"
-                    style="background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
-                           color: var(--text); font-family: var(--font-mono); font-size: 0.78rem;
-                           padding: 0.45rem 0.7rem;">
-                <button type="submit" class="btn btn-primary">Register fingerprint</button>
-            </form>
-            <p class="importance-sub" style="margin-top: 0.7rem;">
-                only the derived CFG structure is stored (node-link JSON) — never the source file
-            </p>
-        </section>
+<!-- Match Results -->
+{% if results %}
+<section class="stats-section">
+    <h2 class="sec-title">Match report</h2>
+    <div class="comparison-header">
+        <div class="file-badge f1">{{ target_name }}</div>
+        <div class="vs-divider">VS</div>
+        <div class="file-badge f2">fingerprint database ({{ results|length }} baseline{{ 's' if results|length != 1 }})</div>
+    </div>
+    <p class="importance-sub" style="margin-bottom: 0.8rem;">
+        {{ target_nodes }} nodes · {{ target_edges }} edges · scores are WL structural similarity
+    </p>
+    <table class="imp-table">
+        <thead>
+            <tr>
+                <th>Baseline</th>
+                <th>Size</th>
+                <th style="min-width: 160px;">Similarity</th>
+                <th>Matched</th>
+                <th>Verdict</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in results %}
+            <tr>
+                <td class="node-name">{{ r.name }}</td>
+                <td>{{ r.nodes }}n / {{ r.edges }}e</td>
+                <td>
+                    <div class="meter" style="margin-bottom: 0.25rem;"><span style="width: {{ r.score }}%;"></span></div>
+                    {{ r.score }}%
+                </td>
+                <td>{{ r.matched }}/{{ target_nodes }}</td>
+                <td><span class="chip {{ r.verdict }}">{{ r.verdict }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
 
-        <footer class="console-footer">
-            <span>CFG<span class="dot">//</span>DIFF &mdash; structural malware triage</span>
-            <span>networkx &middot; weisfeiler-lehman &middot; pyvis</span>
-        </footer>
+<!-- Comparison vs best match -->
+{% if graph_file and stats %}
+<section class="visualization-section">
+    <h2 class="sec-title">Best match comparison</h2>
+    <div class="viewport">
+        <div class="viewport-bar">
+            <span class="vp-title">{{ stats.filename1 }} vs {{ stats.filename2 }}</span>
+            <span class="mode-chip">{{ 'structural' if stats.match_mode == 'structure' else 'name' }}</span>
+        </div>
+        <iframe src="{{ url_for('static', filename=graph_file) }}" class="graph-iframe"
+            title="Comparison against best matching baseline"></iframe>
     </div>
 
-    <script>
-        document.getElementById('target').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            document.getElementById('target-name').textContent = file?.name || 'no file selected';
-            e.target.closest('.dropzone').classList.toggle('has-file', !!file);
-        });
-        document.getElementById('baseline_file').addEventListener('change', function (e) {
-            document.getElementById('baseline-name-display').textContent =
-                e.target.files[0]?.name || 'no file selected';
-        });
-        // Sample button: drop required so the form submits without a file
-        document.querySelector('button[name="sample"]').addEventListener('click', function () {
-            document.getElementById('target').removeAttribute('required');
-        });
-        document.querySelector('.upload-section .btn-primary').addEventListener('click', function () {
-            document.getElementById('target').setAttribute('required', 'required');
-        });
-    </script>
-</body>
+    <div class="legend">
+        <div class="legend-items">
+            <div class="legend-item">
+                <span class="legend-color" style="background: #f59e0b;"></span>
+                <span>Common nodes</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span>{{ stats.filename1 }} only</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #22c55e;"></span>
+                <span>{{ stats.filename2 }} only</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #ef4444;"></span>
+                <span>Common edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #3b82f6;"></span>
+                <span>{{ stats.filename1 }} only edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #22c55e;"></span>
+                <span>{{ stats.filename2 }} only edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: transparent; border: 2px solid #ef4444;"></span>
+                <span>Critical node</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
 
-</html>
+<!-- Baseline DB -->
+<section class="stats-section">
+    <h2 class="sec-title">Fingerprint database</h2>
+    {% if baselines %}
+    <table class="imp-table" style="margin-bottom: 1rem;">
+        <thead>
+            <tr><th>Baseline</th><th>Nodes</th><th>Edges</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for b in baselines %}
+            <tr>
+                <td class="node-name">{{ b.name }}</td>
+                <td>{{ b.nodes }}</td>
+                <td>{{ b.edges }}</td>
+                <td>
+                    <form action="/identify" method="post" style="display:inline">
+                        <input type="hidden" name="delete" value="{{ b.slug }}">
+                        <button type="submit" class="btn-del" onclick="return confirm('Delete this baseline?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="importance-sub" style="margin-bottom: 1rem;">Database is empty — register a baseline below</p>
+    {% endif %}
+
+    <form action="/identify" method="post" enctype="multipart/form-data" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <input type="hidden" name="register" value="1">
+        <label for="baseline_file" class="btn btn-ghost" style="cursor: pointer;">+ Add baseline</label>
+        <input type="file" name="baseline_file" id="baseline_file" accept=".json,.s,.asm" required style="display: none;">
+        <span class="file-name" id="baseline-name-display">no file selected</span>
+        <input type="text" name="baseline_name" placeholder="Name (optional)" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        <button type="submit" class="btn btn-primary">Register</button>
+    </form>
+    <p class="importance-sub" style="margin-top: 0.7rem;">Only the derived CFG structure is stored — never the source file</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('target').addEventListener('change', e => {
+        const file = e.target.files[0];
+        document.getElementById('target-name').textContent = file?.name || 'no file selected';
+        e.target.closest('.dropzone').classList.toggle('has-file', !!file);
+    });
+
+    document.getElementById('baseline_file')?.addEventListener('change', e => {
+        document.getElementById('baseline-name-display').textContent = e.target.files[0]?.name || 'no file selected';
+    });
+
+    document.querySelector('button[name="sample"]')?.addEventListener('click', () => {
+        document.getElementById('target').removeAttribute('required');
+    });
+
+    document.querySelector('.upload-section .btn-primary')?.addEventListener('click', () => {
+        document.getElementById('target').setAttribute('required', 'required');
+    });
+
+    document.getElementById('identify-form')?.addEventListener('submit', e => {
+        const btn = document.getElementById('submit-btn');
+        const maxSize = 16 * 1024 * 1024;
+        const targetInput = document.getElementById('target');
+        
+        if (targetInput.files[0] && targetInput.files[0].size > maxSize) {
+            e.preventDefault();
+            alert('File is too large (max 16MB)');
+            return;
+        }
+        if (btn.dataset.loading === 'true') { e.preventDefault(); return; }
+        btn.dataset.loading = 'true';
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+    });
+
+    // Drag-and-drop
+    const dz = document.querySelector('.dropzone.g1');
+    const inp = document.getElementById('target');
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag-over'); }));
+    dz.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length > 0) {
+            inp.files = e.dataTransfer.files;
+            inp.dispatchEvent(new Event('change'));
+        }
+    });
+</script>
+{% endblock %}

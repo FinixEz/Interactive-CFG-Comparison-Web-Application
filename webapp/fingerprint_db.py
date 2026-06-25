@@ -27,7 +27,7 @@ def _slug(name):
 
 def list_baselines():
     """
-    Return [{'name', 'path', 'nodes', 'edges', 'graph'}] sorted by name.
+    Return [{'name', 'slug', 'path', 'nodes', 'edges', 'graph'}] sorted by name.
     Unreadable files are skipped.
     """
     entries = []
@@ -41,7 +41,8 @@ def list_baselines():
             G = load_cfg_json(path)
         except Exception:
             continue
-        entries.append({'name': fn[:-5], 'path': path, 'graph': G,
+        slug = fn[:-5]
+        entries.append({'name': slug, 'slug': slug, 'path': path, 'graph': G,
                         'nodes': G.number_of_nodes(),
                         'edges': G.number_of_edges()})
     return entries
@@ -82,3 +83,12 @@ def match_against_db(G):
         })
     results.sort(key=lambda r: r['score'], reverse=True)
     return results
+
+
+def delete_baseline(slug):
+    """Remove a baseline file by slug. Raises FileNotFoundError if missing."""
+    path = os.path.join(BASELINE_DIR, _slug(slug) + '.json')
+    if os.path.exists(path):
+        os.remove(path)
+    else:
+        raise FileNotFoundError(f"Baseline '{slug}' not found")

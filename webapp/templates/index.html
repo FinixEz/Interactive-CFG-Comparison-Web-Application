@@ -1,239 +1,237 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}CFG//DIFF · Compare{% endblock %}
+{% block header_suffix %}{% endblock %}
+{% block tagline %}Compare control-flow graphs from malware samples{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFG//DIFF · Graph Comparator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+{% block content %}
+<!-- Upload Form -->
+<section class="upload-section">
+    <h2 class="sec-title">Upload graphs</h2>
+    <form action="/" method="post" enctype="multipart/form-data" id="compare-form">
+        <div class="upload-grid">
+            <label class="dropzone g1" for="graph1">
+                <span class="dz-tag t-g1">Graph 1</span>
+                <span class="dz-hint">.json · .s · .asm</span>
+                <span class="file-name" id="filename1">no file selected</span>
+                <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required>
+            </label>
 
-<body>
-    <div class="container">
-        <header class="console-header rise">
-            <div class="brand">
-                <div class="brand-mark">&gt;_</div>
-                <div>
-                    <h1>CFG<span class="slash">//</span>DIFF</h1>
-                    <p class="tagline">control-flow graph comparator &middot; malware triage</p>
-                </div>
-            </div>
-            <div class="nav-group">
-                <a href="/identify" class="nav-btn">identify file</a>
-                <a href="/inspect" class="nav-btn">assembly inspector <span>&rarr;</span></a>
-            </div>
-        </header>
+            <div class="vs-badge"><span>VS</span></div>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} rise">
-            <span>{% if category == 'success' %}&#10003;{% else %}&#9888;{% endif %}</span>
-            {{ message }}
+            <label class="dropzone g2" for="graph2">
+                <span class="dz-tag t-g2">Graph 2</span>
+                <span class="dz-hint">.json · .s · .asm</span>
+                <span class="file-name" id="filename2">no file selected</span>
+                <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required>
+            </label>
         </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
+        <div class="button-row">
+            <button type="submit" class="btn btn-primary" id="submit-btn">Compare graphs</button>
+            <button type="submit" name="sample" value="1" class="btn btn-ghost">Load sample data</button>
+            {% if stats %}
+            <a href="/" class="btn btn-ghost">Compare again</a>
+            {% endif %}
+        </div>
+    </form>
+</section>
 
-        <!-- Upload Form -->
-        <section class="upload-section rise d1">
-            <h2 class="sec-title">load graphs</h2>
-            <form action="/" method="post" enctype="multipart/form-data">
-                <div class="upload-grid">
-                    <label class="dropzone g1" for="graph1">
-                        <span class="dz-tag t-g1">graph 1</span>
-                        <span class="dz-hint">.json &middot; .s &middot; .asm</span>
-                        <span class="file-name" id="filename1">no file selected</span>
-                        <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required>
-                    </label>
+<!-- Statistics Display -->
+{% if stats %}
+<section class="stats-section">
+    <h2 class="sec-title">Comparison results</h2>
 
-                    <div class="vs-badge"><span>VS</span></div>
-
-                    <label class="dropzone g2" for="graph2">
-                        <span class="dz-tag t-g2">graph 2</span>
-                        <span class="dz-hint">.json &middot; .s &middot; .asm</span>
-                        <span class="file-name" id="filename2">no file selected</span>
-                        <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required>
-                    </label>
-                </div>
-
-                <div class="button-row">
-                    <button type="submit" class="btn btn-primary">Compare graphs</button>
-                    <button type="submit" name="sample" value="1" class="btn btn-ghost">Load sample data</button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Statistics Display -->
-        {% if stats %}
-        <section class="stats-section rise d2">
-            <h2 class="sec-title">comparison statistics</h2>
-
-            <div class="comparison-header">
-                <div class="file-badge f1">{{ stats.filename1 }}</div>
-                <div class="vs-divider">VS</div>
-                <div class="file-badge f2">{{ stats.filename2 }}</div>
-            </div>
+    <div class="comparison-header">
+        <div class="file-badge f1">{{ stats.filename1 }}</div>
+        <div class="vs-divider">VS</div>
+        <div class="file-badge f2">{{ stats.filename2 }}</div>
+    </div>
 
             <div class="struct-readout">
                 <div class="label">
-                    <span>structural similarity &middot; WL fingerprints</span>
+                    <span>structural similarity</span>
                     <b>{{ stats.structural_score }}%</b>
                 </div>
-                <div class="meter"><span style="width: {{ stats.structural_score }}%;"></span></div>
-                {% if stats.match_mode == 'structure' %}
-                <div class="struct-note">
-                    Node names barely overlap between these files (e.g. different address
-                    spaces) &mdash; "common" counts below are <b>structural matches</b>:
-                    blocks with the same control-flow neighborhood pattern, not name matches.
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card c-g1">
-                    <div class="stat-value">{{ stats.g1_nodes }}</div>
-                    <div class="stat-label">{{ stats.filename1 }} nodes</div>
-                </div>
-                <div class="stat-card c-g2">
-                    <div class="stat-value">{{ stats.g2_nodes }}</div>
-                    <div class="stat-label">{{ stats.filename2 }} nodes</div>
-                </div>
-                <div class="stat-card c-common">
-                    <div class="stat-value">{{ stats.common_nodes }}</div>
-                    <div class="stat-label">common nodes{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
-                </div>
-                <div class="stat-card c-g1">
-                    <div class="stat-value">{{ stats.g1_edges }}</div>
-                    <div class="stat-label">{{ stats.filename1 }} edges</div>
-                </div>
-                <div class="stat-card c-g2">
-                    <div class="stat-value">{{ stats.g2_edges }}</div>
-                    <div class="stat-label">{{ stats.filename2 }} edges</div>
-                </div>
-                <div class="stat-card c-common">
-                    <div class="stat-value">{{ stats.common_edges }}</div>
-                    <div class="stat-label">common edges{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
-                </div>
-            </div>
-
-            {% if stats.top_nodes %}
-            <div class="importance-block">
-                <h2 class="sec-title">node-importance classification</h2>
-                <p class="importance-sub">
-                    betweenness/degree centrality on the combined graph &mdash;
-                    {{ stats.critical_nodes }} node{{ 's' if stats.critical_nodes != 1 }} classified critical
-                </p>
-                <table class="imp-table">
-                    <thead>
-                        <tr>
-                            <th>node</th>
-                            <th>tier</th>
-                            <th>score</th>
-                            <th>present in</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for n in stats.top_nodes %}
-                        <tr>
-                            <td class="node-name">{{ n.name|truncate(50) }}</td>
-                            <td><span class="chip {{ n.tier }}">{{ n.tier }}</span></td>
-                            <td>{{ n.score }}</td>
-                            <td>{{ n.where }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-        </section>
+        <div class="meter"><span style="width: {{ stats.structural_score }}%;"></span></div>
+        {% if stats.match_mode == 'structure' %}
+        <div class="struct-note">
+            Node names barely overlap — counts below are <b>structural matches</b> (same control-flow pattern, different names).
+        </div>
         {% endif %}
-
-        <!-- Visualization Display -->
-        {% if visualized %}
-        <section class="visualization-section rise d3">
-            <h2 class="sec-title">combined graph</h2>
-            <div class="viewport">
-                <div class="viewport-bar">
-                    <span class="vp-title">{{ stats.filename1 }} &nbsp;vs&nbsp; {{ stats.filename2 }}</span>
-                    <span class="mode-chip">{{ 'structural match' if stats.match_mode == 'structure' else 'name match' }}</span>
-                </div>
-                <iframe src="{{ url_for('static', filename=graph_file) }}" class="graph-iframe"
-                    title="Combined Graph Visualization"></iframe>
-            </div>
-
-            <div class="legend">
-                <div class="legend-items">
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #ffb454;"></span>
-                        <span>common nodes</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #56c8ff;"></span>
-                        <span>{{ stats.filename1 }} only</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #6fdb8d;"></span>
-                        <span>{{ stats.filename2 }} only</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color edge" style="background: #ff6b6b;"></span>
-                        <span>common edges</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color edge" style="background: #3d8bff;"></span>
-                        <span>{{ stats.filename1 }} only edges</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color edge" style="background: #2ecc71;"></span>
-                        <span>{{ stats.filename2 }} only edges</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: transparent; border: 2px solid #ff5d5d;"></span>
-                        <span>critical node &middot; size &#8733; importance</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-        {% endif %}
-
-        <footer class="console-footer">
-            <span>CFG<span class="dot">//</span>DIFF &mdash; structural malware triage</span>
-            <span>networkx &middot; weisfeiler-lehman &middot; pyvis</span>
-        </footer>
     </div>
 
-    <script>
-        // File input display + dropzone state
-        function wireInput(inputId, nameId) {
-            const input = document.getElementById(inputId);
-            input.addEventListener('change', function (e) {
-                const file = e.target.files[0];
-                document.getElementById(nameId).textContent = file?.name || 'no file selected';
-                input.closest('.dropzone').classList.toggle('has-file', !!file);
-            });
+    <div class="stats-grid">
+        <div class="stat-card c-g1">
+            <div class="stat-value">{{ stats.g1_nodes }}</div>
+            <div class="stat-label">{{ stats.filename1 }} nodes</div>
+        </div>
+        <div class="stat-card c-g2">
+            <div class="stat-value">{{ stats.g2_nodes }}</div>
+            <div class="stat-label">{{ stats.filename2 }} nodes</div>
+        </div>
+        <div class="stat-card c-common">
+            <div class="stat-value">{{ stats.common_nodes }}</div>
+            <div class="stat-label">common nodes{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
+        </div>
+        <div class="stat-card c-g1">
+            <div class="stat-value">{{ stats.g1_edges }}</div>
+            <div class="stat-label">{{ stats.filename1 }} edges</div>
+        </div>
+        <div class="stat-card c-g2">
+            <div class="stat-value">{{ stats.g2_edges }}</div>
+            <div class="stat-label">{{ stats.filename2 }} edges</div>
+        </div>
+        <div class="stat-card c-common">
+            <div class="stat-value">{{ stats.common_edges }}</div>
+            <div class="stat-label">common edges{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
+        </div>
+    </div>
+
+    {% if stats.top_nodes %}
+    <div class="importance-block">
+        <h2 class="sec-title">Node importance</h2>
+        <p class="importance-sub">
+            {{ stats.critical_nodes }} node{{ 's' if stats.critical_nodes != 1 }} classified as critical
+        </p>
+        <table class="imp-table">
+            <thead>
+                <tr>
+                    <th>Node</th>
+                    <th>Tier</th>
+                    <th>Score</th>
+                    <th>Present in</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in stats.top_nodes %}
+                <tr>
+                    <td class="node-name">{{ n.name|truncate(50) }}</td>
+                    <td><span class="chip {{ n.tier }}">{{ n.tier }}</span></td>
+                    <td>{{ n.score }}</td>
+                    <td>{{ n.where }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+
+<!-- Visualization Display -->
+{% if visualized %}
+<section class="visualization-section">
+    <h2 class="sec-title">Combined graph</h2>
+    <div class="viewport">
+        <div class="viewport-bar">
+            <span class="vp-title">{{ stats.filename1 }} vs {{ stats.filename2 }}</span>
+            <span class="mode-chip">{{ 'structural match' if stats.match_mode == 'structure' else 'name match' }}</span>
+        </div>
+        <iframe src="{{ url_for('static', filename=graph_file) }}" class="graph-iframe"
+            title="Combined Graph Visualization"></iframe>
+    </div>
+
+    <div class="legend">
+        <div class="legend-items">
+            <div class="legend-item">
+                <span class="legend-color" style="background: #f59e0b;"></span>
+                <span>Common nodes</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span>{{ stats.filename1 }} only</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #22c55e;"></span>
+                <span>{{ stats.filename2 }} only</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #ef4444;"></span>
+                <span>Common edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #3b82f6;"></span>
+                <span>{{ stats.filename1 }} only edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color edge" style="background: #22c55e;"></span>
+                <span>{{ stats.filename2 }} only edges</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: transparent; border: 2px solid #ef4444;"></span>
+                <span>Critical node</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // File input display
+    function wireInput(inputId, nameId) {
+        const input = document.getElementById(inputId);
+        input.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            document.getElementById(nameId).textContent = file?.name || 'no file selected';
+            input.closest('.dropzone').classList.toggle('has-file', !!file);
+        });
+    }
+    wireInput('graph1', 'filename1');
+    wireInput('graph2', 'filename2');
+
+    // Sample button
+    document.querySelector('button[name="sample"]')?.addEventListener('click', function () {
+        document.getElementById('graph1').removeAttribute('required');
+        document.getElementById('graph2').removeAttribute('required');
+    });
+
+    // Primary button
+    document.querySelector('.btn-primary')?.addEventListener('click', function () {
+        document.getElementById('graph1').setAttribute('required', 'required');
+        document.getElementById('graph2').setAttribute('required', 'required');
+    });
+
+    // Loading + double-submit prevention
+    document.getElementById('compare-form')?.addEventListener('submit', function (e) {
+        const btn = document.getElementById('submit-btn');
+        const maxSize = 16 * 1024 * 1024;
+        const g1 = document.getElementById('graph1');
+        const g2 = document.getElementById('graph2');
+        
+        if (g1.files[0] && g1.files[0].size > maxSize) {
+            e.preventDefault();
+            alert('Graph 1 file is too large (max 16MB)');
+            return;
         }
-        wireInput('graph1', 'filename1');
-        wireInput('graph2', 'filename2');
+        if (g2.files[0] && g2.files[0].size > maxSize) {
+            e.preventDefault();
+            alert('Graph 2 file is too large (max 16MB)');
+            return;
+        }
+        if (btn.dataset.loading === 'true') { e.preventDefault(); return; }
+        btn.dataset.loading = 'true';
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+    });
 
-        // Sample button: drop required so the form submits without files
-        document.querySelector('button[name="sample"]').addEventListener('click', function () {
-            document.getElementById('graph1').removeAttribute('required');
-            document.getElementById('graph2').removeAttribute('required');
+    // Drag-and-drop
+    function wireDropzone(dropzoneEl, inputEl) {
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzoneEl.addEventListener(evt, e => { e.preventDefault(); dropzoneEl.classList.add('drag-over'); });
         });
-
-        // Compare button: restore required
-        document.querySelector('.btn-primary').addEventListener('click', function () {
-            document.getElementById('graph1').setAttribute('required', 'required');
-            document.getElementById('graph2').setAttribute('required', 'required');
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzoneEl.addEventListener(evt, e => { e.preventDefault(); dropzoneEl.classList.remove('drag-over'); });
         });
-    </script>
-</body>
-
-</html>
+        dropzoneEl.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                inputEl.files = files;
+                inputEl.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    wireDropzone(document.querySelector('.dropzone.g1'), document.getElementById('graph1'));
+    wireDropzone(document.querySelector('.dropzone.g2'), document.getElementById('graph2'));
+</script>
+{% endblock %}

@@ -477,10 +477,18 @@ def _verdict(score):
 def identify():
     """Single-file identification against the baseline fingerprint database."""
     def baseline_summaries():
-        return [{'name': b['name'], 'nodes': b['nodes'], 'edges': b['edges']}
+        return [{'name': b['name'], 'nodes': b['nodes'], 'edges': b['edges'], 'slug': b['slug']}
                 for b in list_baselines()]
 
     if request.method != "POST":
+        return render_template("identify.html", baselines=baseline_summaries())
+
+    # Branch 0: delete a baseline
+    if 'delete' in request.form:
+        from fingerprint_db import delete_baseline
+        slug = request.form['delete']
+        delete_baseline(slug)
+        flash(f"Baseline '{slug}' deleted", "success")
         return render_template("identify.html", baselines=baseline_summaries())
 
     # Branch 1: register a new baseline fingerprint
@@ -784,6 +792,12 @@ def get_stats():
     """API endpoint to get graph statistics"""
     # This could be expanded to return cached statistics
     return jsonify({"status": "ready"})
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Custom 404 page matching the dark forensic theme"""
+    return render_template("404.html"), 404
 
 
 @app.errorhandler(413)
