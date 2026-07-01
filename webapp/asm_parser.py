@@ -328,18 +328,35 @@ class AssemblyParser:
             labels: Dictionary of labels
         """
         block_list = list(basic_blocks.keys())
-        
+
+        def _clean(raw: str) -> str:
+            # Strip inline comments (';' MASM/NASM, '#' GAS) and a leading
+            # "label:" prefix so only the instruction itself is parsed
+            cleaned = raw.strip().lower()
+            cleaned = cleaned.split(';', 1)[0].split('#', 1)[0].strip()
+            return re.sub(r'^[.\w]+:\s*', '', cleaned)
+
         for i, (block_id, block_info) in enumerate(basic_blocks.items()):
             lines = block_info['lines']
             if not lines:
                 continue
-            
-            last_line = lines[-1].strip().lower()
 
-            # Strip inline comments (';' MASM/NASM, '#' GAS) and a leading
-            # "label:" prefix so only the instruction itself is parsed
-            last_line = last_line.split(';', 1)[0].split('#', 1)[0].strip()
-            last_line = re.sub(r'^[.\w]+:\s*', '', last_line)
+            # Scan backward for the last actual control-flow instruction.
+            # Trailing unlabeled data declarations (e.g. "hello db ...",
+            # common right after a MASM/TASM jmp with no colon label) get
+            # appended to this block by _build_basic_blocks and would
+            # otherwise be mistaken for the block's terminating instruction,
+            # silently dropping the real jump's edge.
+            for raw in reversed(lines):
+                cleaned = _clean(raw)
+                if not cleaned:
+                    continue
+                mnemonic = cleaned.split()[0] if cleaned.split() else ''
+                if mnemonic in self.jumps['unconditional'] or mnemonic in self.jumps['conditional']:
+                    last_line = cleaned
+                    break
+            else:
+                last_line = _clean(lines[-1])
 
             # Check for jump instructions
             has_unconditional_jump = False

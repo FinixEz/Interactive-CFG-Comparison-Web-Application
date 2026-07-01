@@ -109,4 +109,10 @@ ANTHRAX = os.path.join(
 def test_anthrax_regression():
     G = parse_assembly_file(ANTHRAX)
     assert G.number_of_nodes() == 38
-    assert G.number_of_edges() == 30
+    assert G.number_of_edges() == 31
+    # delta's block ends with "jmp exit_" but MASM appends unlabeled data
+    # declarations (hello/GMK/where_to_go/vir_size) after it in the same
+    # label-delimited block; the edge builder must look past those to find
+    # the real terminating jump instead of a spurious fall-through.
+    assert G.has_edge('delta', 'exit_')
+    assert not G.has_edge('delta', 'infect')
