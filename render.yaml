@@ -13,10 +13,4 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
-      - key: BASELINE_DIR
-        value: /var/data/baselines
-    disk:
-      name: cfg-baselines
-      mountPath: /var/data
-      sizeGB: 1
 
