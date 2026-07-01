@@ -1,7 +1,9 @@
 services:
   - type: web
-    name: cfg-comparison-app
-    env: python
+    name: Interactive-CFG-Comparison-Web-Application
+    runtime: python
+    region: singapore
+    plan: free
     buildCommand: pip install -r requirements-production.txt
     startCommand: gunicorn --chdir webapp --bind 0.0.0.0:$PORT --timeout 120 --workers 2 app:app
     envVars:
