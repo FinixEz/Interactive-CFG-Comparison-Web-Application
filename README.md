@@ -198,12 +198,15 @@ Docker build on every push.
 
 | Environment variable | Default | Purpose |
 |---|---|---|
-| `SECRET_KEY` | dev placeholder | Flask session signing — set a real value in production |
+| `SECRET_KEY` | dev placeholder | Flask session signing — set a real value in production (Render's `render.yaml` auto-generates one) |
+| `ADMIN_TOKEN` | unset | If set, `/identify` register+delete require it (`X-Admin-Token` header or `token` form field); unset leaves those routes open, matching pre-hardening behavior |
 | `BIND_ADDR` | `127.0.0.1` | Address Docker Compose publishes on; `0.0.0.0` exposes to the network |
 | `MAX_VIS_NODES` | `800` | Max nodes rendered per graph view (stats always cover full graphs) |
 | `NAME_OVERLAP_THRESHOLD` | `0.05` | Name-overlap fraction below which comparison falls back to structural matching |
 | `UPLOAD_FOLDER` | `webapp/uploads` | Where uploads are written |
-| `BASELINE_DIR` | `webapp/baselines` | Where baseline CFG fingerprints are stored |
+| `BASELINE_DIR` | `webapp/baselines` | Where baseline CFG fingerprints are stored — ephemeral on Render free tier (no persistent disk support), so anything registered via `/identify` doesn't survive a redeploy; the seed baselines are re-copied from git on every boot |
+
+`/identify` register+delete are also rate-limited (5/hour, in-memory — resets per gunicorn worker, so the effective ceiling scales with worker count).
 
 ## 🔧 Key Technologies
 
