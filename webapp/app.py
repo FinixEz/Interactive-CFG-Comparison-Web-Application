@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, jsonify, flash
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from visualize_compare import (load_cfg_json, compare_graphs, add_legend_to_html,
                                compute_node_importance, structural_similarity,
                                apply_dark_chrome)
@@ -16,12 +18,38 @@ import glob
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+_DEV_SECRET_KEY = 'dev-secret-key-change-in-production'
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.secret_key = os.environ.get('SECRET_KEY', _DEV_SECRET_KEY)
+if app.secret_key == _DEV_SECRET_KEY and os.environ.get('FLASK_ENV') == 'production':
+    logger.error(
+        "SECRET_KEY is unset — running production with the public dev default. "
+        "Set SECRET_KEY in the environment.")
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
 ALLOWED_EXTENSIONS = {'json', 's', 'asm'}
 ASSEMBLY_EXTENSIONS = {'s', 'asm'}
+
+# In-memory storage: per-worker, not shared across gunicorn processes — good
+# enough to blunt casual scripted abuse of the baseline DB, not a hard cap.
+limiter = Limiter(get_remote_address, app=app, storage_uri="memory://",
+                   default_limits=[])
+
+# If set, /identify register+delete require this token (?token=... or
+# X-Admin-Token header); unset means the routes stay open (dev default).
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
+
+
+def _admin_authorized():
+    if not ADMIN_TOKEN:
+        return True
+    supplied = request.headers.get('X-Admin-Token') or request.form.get('token')
+    return supplied == ADMIN_TOKEN
 
 # vis.js degrades badly past ~1-2k nodes; cap what we render (stats are
 # always computed on the full graphs)
@@ -31,10 +59,6 @@ MAX_VIS_NODES = int(os.environ.get('MAX_VIS_NODES', 800))
 # considered unrelated (e.g. address-based IDs from different binaries) and
 # shared/unique classification falls back to structural matching
 NAME_OVERLAP_THRESHOLD = float(os.environ.get('NAME_OVERLAP_THRESHOLD', 0.05))
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -473,7 +497,12 @@ def _verdict(score):
     return 'none'
 
 
+def _is_admin_mutation():
+    return request.method == "POST" and ('register' in request.form or 'delete' in request.form)
+
+
 @app.route("/identify", methods=["GET", "POST"])
+@limiter.limit("5 per hour", exempt_when=lambda: not _is_admin_mutation())
 def identify():
     """Single-file identification against the baseline fingerprint database."""
     def baseline_summaries():
@@ -483,12 +512,19 @@ def identify():
     if request.method != "POST":
         return render_template("identify.html", baselines=baseline_summaries())
 
+    if _is_admin_mutation() and not _admin_authorized():
+        flash("Not authorized to modify the baseline database", "error")
+        return render_template("identify.html", baselines=baseline_summaries()), 403
+
     # Branch 0: delete a baseline
     if 'delete' in request.form:
         from fingerprint_db import delete_baseline
         slug = request.form['delete']
-        delete_baseline(slug)
-        flash(f"Baseline '{slug}' deleted", "success")
+        try:
+            delete_baseline(slug)
+            flash(f"Baseline '{slug}' deleted", "success")
+        except FileNotFoundError:
+            flash(f"Baseline '{slug}' not found", "error")
         return render_template("identify.html", baselines=baseline_summaries())
 
     # Branch 1: register a new baseline fingerprint
@@ -809,13 +845,19 @@ def request_entity_too_large(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    """Handle internal server errors"""
-    logger.error(f"Internal error: {str(error)}")
+    """Handle internal server errors, rendering the template for the route that failed"""
+    logger.error(f"Internal error on {request.path}: {str(error)}")
     flash("An internal error occurred. Please try again.", "error")
+    if request.path.startswith("/inspect"):
+        return render_template("inspector.html"), 500
+    if request.path.startswith("/identify"):
+        return render_template("identify.html", baselines=[
+            {'name': b['name'], 'nodes': b['nodes'], 'edges': b['edges'], 'slug': b['slug']}
+            for b in list_baselines()]), 500
     return render_template("index.html", visualized=False), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+    debug = os.environ.get('FLASK_ENV', 'production') == 'development'
     app.run(debug=debug, host='0.0.0.0', port=port)

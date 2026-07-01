@@ -11,6 +11,7 @@ import app as webapp
 @pytest.fixture()
 def client():
     webapp.app.config['TESTING'] = True
+    webapp.limiter.reset()
     with webapp.app.test_client() as c:
         yield c
 
@@ -89,6 +90,59 @@ def test_register_baseline(client, monkeypatch, tmp_path):
     assert (tmp_path / 'tiny.json').exists()
 
 
+def test_delete_baseline(client, monkeypatch, tmp_path):
+    import fingerprint_db as fdb
+    monkeypatch.setattr(fdb, 'BASELINE_DIR', str(tmp_path))
+    fdb.add_baseline('tiny', webapp.nx.DiGraph([('a', 'b')]))
+    assert (tmp_path / 'tiny.json').exists()
+
+    r = client.post('/identify', data={'delete': 'tiny'})
+    assert r.status_code == 200
+    assert b'deleted' in r.data
+    assert not (tmp_path / 'tiny.json').exists()
+
+
+def test_admin_token_blocks_unauthorized_mutation(client, monkeypatch, tmp_path):
+    import fingerprint_db as fdb
+    monkeypatch.setattr(fdb, 'BASELINE_DIR', str(tmp_path))
+    monkeypatch.setattr(webapp, 'ADMIN_TOKEN', 'secret123')
+
+    r = client.post('/identify', data={
+        'register': '1',
+        'baseline_name': 'tiny',
+        'baseline_file': (_json_file(['a', 'b'], [['a', 'b']]), 't.json'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 403
+    assert not (tmp_path / 'tiny.json').exists()
+
+
+def test_admin_token_allows_authorized_mutation(client, monkeypatch, tmp_path):
+    import fingerprint_db as fdb
+    monkeypatch.setattr(fdb, 'BASELINE_DIR', str(tmp_path))
+    monkeypatch.setattr(webapp, 'ADMIN_TOKEN', 'secret123')
+
+    r = client.post('/identify', data={
+        'register': '1',
+        'token': 'secret123',
+        'baseline_name': 'tiny',
+        'baseline_file': (_json_file(['a', 'b'], [['a', 'b']]), 't.json'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 200
+    assert (tmp_path / 'tiny.json').exists()
+
+
+def test_identify_mutation_rate_limited(client, monkeypatch, tmp_path):
+    import fingerprint_db as fdb
+    monkeypatch.setattr(fdb, 'BASELINE_DIR', str(tmp_path))
+
+    for _ in range(5):
+        r = client.post('/identify', data={'delete': 'nonexistent'})
+        assert r.status_code == 200
+
+    r = client.post('/identify', data={'delete': 'nonexistent'})
+    assert r.status_code == 429
+
+
 def test_large_graph_render_is_capped(client, monkeypatch):
     monkeypatch.setattr(webapp, 'MAX_VIS_NODES', 5)
     nodes = [f'n{i}' for i in range(12)]
@@ -99,3 +153,20 @@ def test_large_graph_render_is_capped(client, monkeypatch):
     }, content_type='multipart/form-data')
     assert r.status_code == 200
     assert 'most important' in r.get_data(as_text=True)
+
+
+def test_500_handler_renders_route_specific_template():
+    with webapp.app.test_request_context('/inspect'):
+        body, status = webapp.internal_error(Exception('boom'))
+        assert status == 500
+        assert 'Assembly Inspector' in body
+
+    with webapp.app.test_request_context('/identify'):
+        body, status = webapp.internal_error(Exception('boom'))
+        assert status == 500
+        assert 'Identify' in body
+
+    with webapp.app.test_request_context('/'):
+        body, status = webapp.internal_error(Exception('boom'))
+        assert status == 500
+        assert 'Compare' in body

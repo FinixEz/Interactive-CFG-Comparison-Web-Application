@@ -6,38 +6,60 @@ compatible with the existing CFG comparison logic.
 """
 
 import re
+import logging
 import networkx as nx
 from typing import Dict, List, Set, Tuple, Optional
 import os
 
+logger = logging.getLogger(__name__)
 
-def preprocess_masm(asm_content: str, inc_dir: str = '.') -> str:
+
+def preprocess_masm(asm_content: str, inc_dir: str = '.', _seen: Optional[Set[str]] = None) -> str:
     """
     Expand INCLUDE directives like MASM does.
-    
+
     This preprocessor handles MASM-style INCLUDE directives, which are common
     in malware samples (e.g., theZoo malware collection). It recursively expands
     all INCLUDE files, giving you the fully expanded assembly exactly as the
     assembler sees it.
-    
+
     Args:
         asm_content: Assembly source code as string
         inc_dir: Directory to search for include files
-        
+        _seen: internal — realpaths of includes already expanded on this chain,
+            used to reject self-referential/circular INCLUDEs
+
     Returns:
         Expanded assembly code with all INCLUDE directives resolved
     """
+    inc_dir_real = os.path.realpath(inc_dir)
+    if _seen is None:
+        _seen = set()
+
     lines = asm_content.split('\n')
     expanded = []
-    
+
     for line in lines:
         line_stripped = line.strip()
-        
+
         # INCLUDE directive (case-insensitive)
         if line_stripped.upper().startswith('INCLUDE '):
             inc_file = line_stripped.split(' ', 1)[1].strip().strip('"\'')
             try:
-                inc_path = os.path.join(inc_dir, inc_file)
+                inc_path = os.path.realpath(os.path.join(inc_dir, inc_file))
+
+                # Reject includes that escape inc_dir (path traversal / absolute
+                # paths reaching outside the upload sandbox) or that would recurse
+                # into a file already being expanded on this chain.
+                if os.path.commonpath([inc_path, inc_dir_real]) != inc_dir_real:
+                    logger.warning(f"Blocked INCLUDE outside sandbox: {inc_file}")
+                    expanded.append(line)
+                    continue
+                if inc_path in _seen:
+                    logger.warning(f"Blocked circular/self INCLUDE: {inc_file}")
+                    expanded.append(line)
+                    continue
+
                 # Try multiple encodings for include files
                 inc_content = None
                 for encoding in ['utf-8', 'latin-1', 'cp1252']:
@@ -47,21 +69,21 @@ def preprocess_masm(asm_content: str, inc_dir: str = '.') -> str:
                         break
                     except (UnicodeDecodeError, FileNotFoundError):
                         continue
-                
+
                 if inc_content:
                     # Recursively expand includes in the included file
-                    inc_expanded = preprocess_masm(inc_content, inc_dir)
+                    inc_expanded = preprocess_masm(inc_content, inc_dir, _seen | {inc_path})
                     expanded.extend(inc_expanded.split('\n'))
-                    print(f"✓ Expanded INCLUDE: {inc_file}")
+                    logger.info(f"Expanded INCLUDE: {inc_file}")
                 else:
-                    print(f"⚠ WARNING: Could not read {inc_file}")
+                    logger.warning(f"Could not read {inc_file}")
                     expanded.append(line)  # Keep original line if include fails
             except Exception as e:
-                print(f"⚠ WARNING: Error processing {inc_file}: {e}")
+                logger.warning(f"Error processing {inc_file}: {e}")
                 expanded.append(line)  # Keep original line if include fails
         else:
             expanded.append(line)
-    
+
     return '\n'.join(expanded)
 
 
@@ -151,7 +173,7 @@ class AssemblyParser:
         if filepath.lower().endswith('.asm'):
             inc_dir = os.path.dirname(filepath) or '.'
             asm_code = preprocess_masm(asm_code, inc_dir)
-            print(f"✓ Preprocessed MASM file: {filepath}")
+            logger.info(f"Preprocessed MASM file: {filepath}")
         
         if auto_detect_arch:
             self.arch = self.detect_architecture(asm_code)

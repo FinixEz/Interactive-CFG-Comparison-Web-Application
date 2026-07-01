@@ -10,13 +10,35 @@ holds across renamed labels and different address spaces.
 import json
 import os
 import re
+import shutil
 
 from networkx.readwrite import json_graph
 
 from visualize_compare import load_cfg_json, structural_similarity
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BASELINE_DIR = os.environ.get('BASELINE_DIR', os.path.join(BASE_DIR, 'baselines'))
+_SEED_DIR = os.path.join(BASE_DIR, 'baselines')
+BASELINE_DIR = os.environ.get('BASELINE_DIR', _SEED_DIR)
+
+
+def _seed_baseline_dir_if_empty():
+    """
+    First boot onto a fresh persistent disk (BASELINE_DIR pointed at a mount
+    that starts empty) would otherwise hide the repo's committed seed
+    baselines. Copy them in once; leave alone on every later boot so
+    user-registered/deleted baselines on the disk aren't clobbered.
+    """
+    if BASELINE_DIR == _SEED_DIR or not os.path.isdir(_SEED_DIR):
+        return
+    if os.path.isdir(BASELINE_DIR) and os.listdir(BASELINE_DIR):
+        return
+    os.makedirs(BASELINE_DIR, exist_ok=True)
+    for fn in os.listdir(_SEED_DIR):
+        if fn.endswith('.json'):
+            shutil.copy2(os.path.join(_SEED_DIR, fn), os.path.join(BASELINE_DIR, fn))
+
+
+_seed_baseline_dir_if_empty()
 
 
 def _slug(name):

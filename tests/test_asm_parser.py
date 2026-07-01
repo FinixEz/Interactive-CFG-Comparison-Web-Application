@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from asm_parser import build_cfg_from_assembly, parse_assembly_file
+from asm_parser import build_cfg_from_assembly, parse_assembly_file, preprocess_masm
 
 GAS = """\
 main:
@@ -116,3 +116,46 @@ def test_anthrax_regression():
     # the real terminating jump instead of a spurious fall-through.
     assert G.has_edge('delta', 'exit_')
     assert not G.has_edge('delta', 'infect')
+
+
+def test_include_rejects_parent_traversal(tmp_path):
+    sandbox = tmp_path / "uploads"
+    sandbox.mkdir()
+    secret = tmp_path / "secret.inc"
+    secret.write_text("SECRET_TOKEN_SHOULD_NOT_LEAK")
+
+    out = preprocess_masm("INCLUDE ../secret.inc\nret\n", str(sandbox))
+    assert "SECRET_TOKEN_SHOULD_NOT_LEAK" not in out
+    assert "INCLUDE ../secret.inc" in out  # left untouched, not silently dropped
+
+
+def test_include_rejects_absolute_path(tmp_path):
+    sandbox = tmp_path / "uploads"
+    sandbox.mkdir()
+    secret = tmp_path / "secret2.inc"
+    secret.write_text("ANOTHER_SECRET_SHOULD_NOT_LEAK")
+
+    out = preprocess_masm(f"INCLUDE {secret}\nret\n", str(sandbox))
+    assert "ANOTHER_SECRET_SHOULD_NOT_LEAK" not in out
+
+
+def test_include_self_reference_terminates(tmp_path):
+    sandbox = tmp_path / "uploads"
+    sandbox.mkdir()
+    (sandbox / "a.inc").write_text("INCLUDE a.inc\nnop\n")
+
+    # Must terminate without RecursionError; direct self-include just gets
+    # left inline rather than expanded a second time.
+    out = preprocess_masm("INCLUDE a.inc\nret\n", str(sandbox))
+    assert out.count("nop") == 1
+
+
+def test_include_circular_pair_terminates(tmp_path):
+    sandbox = tmp_path / "uploads"
+    sandbox.mkdir()
+    (sandbox / "a.inc").write_text("INCLUDE b.inc\nnop_a\n")
+    (sandbox / "b.inc").write_text("INCLUDE a.inc\nnop_b\n")
+
+    out = preprocess_masm("INCLUDE a.inc\nret\n", str(sandbox))
+    assert out.count("nop_a") == 1
+    assert out.count("nop_b") == 1
