@@ -147,12 +147,11 @@ body::after {
     border-radius: 10px;
     display: grid; place-items: center;
     color: var(--accent);
-    font-family: var(--font-mono);
-    font-size: 1.05rem;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
     font-weight: 700;
     box-shadow: var(--shadow-card);
 }
-.brand-mark .cursor { animation: blink 1.4s step-start infinite; }
 
 .brand h1 {
     font-family: var(--font-display);
@@ -164,22 +163,18 @@ body::after {
 .brand h1 .slash { color: var(--accent); }
 
 .tagline {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
+    font-family: var(--font);
+    font-size: 0.85rem;
     color: var(--muted);
     margin-top: 0.2rem;
 }
-.tagline::before { content: '// '; color: var(--faint); }
 
 .nav-group { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
 
 .nav-btn {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-family: var(--font);
+    font-size: 0.88rem;
     font-weight: 500;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
     color: var(--muted);
     text-decoration: none;
     padding: 0.6rem 0.95rem;
@@ -193,19 +188,19 @@ body::after {
     color: var(--accent);
     background: var(--accent-soft);
     border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    font-weight: 600;
 }
 
 /* ---------- sections ---------- */
 .eyebrow {
     display: block;
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     color: var(--accent);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
 }
-.eyebrow::before { content: '// '; color: var(--faint); }
 
 .sec-title {
     font-family: var(--font-display);
@@ -316,10 +311,10 @@ body::after {
 }
 
 .dz-tag {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-family: var(--font);
+    font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
     padding: 0.3rem 0.7rem;
     border-radius: 5px;
@@ -327,7 +322,7 @@ body::after {
 .dz-tag.t-g1 { background: var(--g1-soft); color: var(--g1); }
 .dz-tag.t-g2 { background: var(--g2-soft); color: var(--g2); }
 
-.dz-hint { font-family: var(--font-mono); font-size: 0.75rem; color: var(--faint); }
+.dz-hint { font-size: 0.8rem; color: var(--faint); }
 
 .file-name {
     font-size: 0.85rem;
@@ -346,7 +341,7 @@ body::after {
     background: var(--bg-alt);
     border: 1px solid var(--border);
     border-radius: 50%;
-    font-family: var(--font-mono);
+    font-family: var(--font);
     font-size: 0.72rem;
     font-weight: 700;
     color: var(--muted);
@@ -361,11 +356,9 @@ body::after {
 }
 
 .btn {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-family: var(--font);
+    font-size: 0.9rem;
     font-weight: 600;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
     padding: 0.75rem 1.5rem;
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
@@ -418,7 +411,7 @@ body::after {
 .file-badge.f1 { background: var(--g1-soft); color: var(--g1); border-color: color-mix(in srgb, var(--g1) 30%, transparent); }
 .file-badge.f2 { background: var(--g2-soft); color: var(--g2); border-color: color-mix(in srgb, var(--g2) 30%, transparent); }
 
-.vs-divider { font-family: var(--font-mono); font-size: 0.75rem; color: var(--faint); }
+.vs-divider { font-size: 0.8rem; color: var(--faint); }
 
 /* meter */
 .struct-readout {
@@ -426,15 +419,14 @@ body::after {
     margin: 0 auto 1.75rem;
 }
 .struct-readout .label {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
+    font-family: var(--font);
+    font-size: 0.85rem;
     color: var(--muted);
     display: flex;
     justify-content: space-between;
     margin-bottom: 0.5rem;
 }
-.struct-readout .label b { color: var(--accent); font-size: 1rem; }
+.struct-readout .label b { font-family: var(--font-display); color: var(--accent); font-size: 1.1rem; }
 
 .meter {
     height: 7px;
@@ -487,9 +479,8 @@ body::after {
 }
 
 .stat-label {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.01em;
+    font-family: var(--font);
+    font-size: 0.78rem;
     color: var(--muted);
     margin-top: 0.4rem;
     display: flex;
@@ -510,8 +501,7 @@ body::after {
 /* ---------- table ---------- */
 .importance-block { margin-top: 1.75rem; }
 .importance-sub {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     color: var(--muted);
     margin: -0.2rem 0 1rem;
 }
@@ -523,11 +513,11 @@ body::after {
 }
 .imp-table th {
     text-align: left;
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-family: var(--font);
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     color: var(--faint);
     padding: 0.7rem 0.8rem;
     border-bottom: 1px solid var(--border-strong);
@@ -535,22 +525,26 @@ body::after {
 .imp-table td {
     padding: 0.75rem 0.8rem;
     border-bottom: 1px solid var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-family: var(--font);
+    font-size: 0.85rem;
 }
 .imp-table tr { transition: background 0.1s; }
 .imp-table tr:hover { background: var(--bg-alt); }
 .imp-table tr:last-child td { border-bottom: none; }
-.imp-table td.node-name { max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-table td.node-name {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .chip {
     display: inline-block;
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-family: var(--font);
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.22rem 0.55rem;
+    letter-spacing: 0.02em;
+    padding: 0.22rem 0.6rem;
     border-radius: 4px;
     border: 1px solid transparent;
 }
@@ -608,8 +602,7 @@ body::after {
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     color: var(--muted);
     background: var(--bg);
     border: 1px solid var(--border);
@@ -627,9 +620,7 @@ body::after {
     margin-top: 2.5rem;
     padding-top: 1.25rem;
     border-top: 1px solid var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.02em;
+    font-size: 0.8rem;
     color: var(--faint);
     display: flex;
     justify-content: space-between;
@@ -662,11 +653,9 @@ body::after {
 
 /* ---------- delete button ---------- */
 .btn-del {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-family: var(--font);
+    font-size: 0.78rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
     color: var(--danger);
     background: var(--danger-soft);
     border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
