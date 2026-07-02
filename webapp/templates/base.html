@@ -6,7 +6,7 @@
     <title>{% block title %}CFG//DIFF{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script>
         (function() {
@@ -23,7 +23,7 @@
     <div class="container">
         <header class="console-header">
             <div class="brand">
-                <div class="brand-mark">&gt;_</div>
+                <div class="brand-mark">&gt;<span class="cursor">_</span></div>
                 <div>
                     <h1>CFG<span class="slash">//</span>DIFF{% block header_suffix %}{% endblock %}</h1>
                     <p class="tagline">{% block tagline %}Compare control-flow graphs from malware samples{% endblock %}</p>

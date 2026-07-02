@@ -6,6 +6,7 @@
 {% block content %}
 <!-- Identify Form -->
 <section class="upload-section">
+    <span class="eyebrow">01 — target</span>
     <h2 class="sec-title">Identify file</h2>
     <form action="/identify" method="post" enctype="multipart/form-data" id="identify-form">
         <label class="dropzone g1" for="target" style="margin-bottom: 1rem;">
@@ -27,6 +28,7 @@
 <!-- Match Results -->
 {% if results %}
 <section class="stats-section">
+    <span class="eyebrow">02 — match report</span>
     <h2 class="sec-title">Match report</h2>
     <div class="comparison-header">
         <div class="file-badge f1">{{ target_name }}</div>
@@ -67,6 +69,7 @@
 <!-- Comparison vs best match -->
 {% if graph_file and stats %}
 <section class="visualization-section">
+    <span class="eyebrow">03 — render</span>
     <h2 class="sec-title">Best match comparison</h2>
     <div class="viewport">
         <div class="viewport-bar">
@@ -80,31 +83,31 @@
     <div class="legend">
         <div class="legend-items">
             <div class="legend-item">
-                <span class="legend-color" style="background: #f59e0b;"></span>
+                <span class="legend-color" style="background: #ffb454;"></span>
                 <span>Common nodes</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span class="legend-color" style="background: #56c8ff;"></span>
                 <span>{{ stats.filename1 }} only</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: #22c55e;"></span>
+                <span class="legend-color" style="background: #6fdb8d;"></span>
                 <span>{{ stats.filename2 }} only</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #ef4444;"></span>
+                <span class="legend-color edge" style="background: #ff6b6b;"></span>
                 <span>Common edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #3b82f6;"></span>
+                <span class="legend-color edge" style="background: #3d8bff;"></span>
                 <span>{{ stats.filename1 }} only edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #22c55e;"></span>
+                <span class="legend-color edge" style="background: #2ecc71;"></span>
                 <span>{{ stats.filename2 }} only edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: transparent; border: 2px solid #ef4444;"></span>
+                <span class="legend-color" style="background: transparent; border: 2px solid #ff5d5d;"></span>
                 <span>Critical node</span>
             </div>
         </div>
@@ -114,6 +117,7 @@
 
 <!-- Baseline DB -->
 <section class="stats-section">
+    <span class="eyebrow">04 — database</span>
     <h2 class="sec-title">Fingerprint database</h2>
     {% if baselines %}
     <table class="imp-table" style="margin-bottom: 1rem;">
@@ -145,7 +149,7 @@
         <label for="baseline_file" class="btn btn-ghost" style="cursor: pointer;">+ Add baseline</label>
         <input type="file" name="baseline_file" id="baseline_file" accept=".json,.s,.asm" required style="display: none;">
         <span class="file-name" id="baseline-name-display">no file selected</span>
-        <input type="text" name="baseline_name" placeholder="Name (optional)" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        <input type="text" name="baseline_name" placeholder="Name (optional)" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 0.82rem;">
         <button type="submit" class="btn btn-primary">Register</button>
     </form>
     <p class="importance-sub" style="margin-top: 0.7rem;">Only the derived CFG structure is stored — never the source file</p>

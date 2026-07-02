@@ -6,6 +6,7 @@
 {% block content %}
 <!-- Upload Form -->
 <section class="upload-section">
+    <span class="eyebrow">01 — targets</span>
     <h2 class="sec-title">Upload graphs</h2>
     <form action="/" method="post" enctype="multipart/form-data" id="compare-form">
         <div class="upload-grid">
@@ -38,6 +39,7 @@
 <!-- Statistics Display -->
 {% if stats %}
 <section class="stats-section">
+    <span class="eyebrow">02 — results</span>
     <h2 class="sec-title">Comparison results</h2>
 
     <div class="comparison-header">
@@ -120,6 +122,7 @@
 <!-- Visualization Display -->
 {% if visualized %}
 <section class="visualization-section">
+    <span class="eyebrow">03 — render</span>
     <h2 class="sec-title">Combined graph</h2>
     <div class="viewport">
         <div class="viewport-bar">
@@ -133,31 +136,31 @@
     <div class="legend">
         <div class="legend-items">
             <div class="legend-item">
-                <span class="legend-color" style="background: #f59e0b;"></span>
+                <span class="legend-color" style="background: #ffb454;"></span>
                 <span>Common nodes</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span class="legend-color" style="background: #56c8ff;"></span>
                 <span>{{ stats.filename1 }} only</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: #22c55e;"></span>
+                <span class="legend-color" style="background: #6fdb8d;"></span>
                 <span>{{ stats.filename2 }} only</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #ef4444;"></span>
+                <span class="legend-color edge" style="background: #ff6b6b;"></span>
                 <span>Common edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #3b82f6;"></span>
+                <span class="legend-color edge" style="background: #3d8bff;"></span>
                 <span>{{ stats.filename1 }} only edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color edge" style="background: #22c55e;"></span>
+                <span class="legend-color edge" style="background: #2ecc71;"></span>
                 <span>{{ stats.filename2 }} only edges</span>
             </div>
             <div class="legend-item">
-                <span class="legend-color" style="background: transparent; border: 2px solid #ef4444;"></span>
+                <span class="legend-color" style="background: transparent; border: 2px solid #ff5d5d;"></span>
                 <span>Critical node</span>
             </div>
         </div>

@@ -6,7 +6,7 @@
     <title>CFG//DIFF · Assembly Inspector</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script>
         (function() {
@@ -135,8 +135,9 @@
             padding: 0.5rem 1rem;
             background: var(--bg-alt);
             border-bottom: 1px solid var(--border);
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
             color: var(--muted);
             white-space: nowrap;
@@ -209,7 +210,7 @@
         }
 
         .code-line.highlighted {
-            background: rgba(245, 158, 11, 0.15);
+            background: var(--accent-soft);
             color: var(--text);
         }
 
@@ -308,7 +309,7 @@
     <div class="inspector-container">
         <header class="inspector-header">
             <div class="brand">
-                <div class="brand-mark">&gt;_</div>
+                <div class="brand-mark">&gt;<span class="cursor">_</span></div>
                 <div>
                     <h1>CFG<span class="slash">//</span>DIFF <span style="color: var(--muted); font-weight: 400;">/ inspector</span></h1>
                     <p class="tagline">real-time assembly &rarr; control-flow graph</p>
