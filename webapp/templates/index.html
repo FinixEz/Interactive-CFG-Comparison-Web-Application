@@ -61,6 +61,12 @@
         {% endif %}
     </div>
 
+    <div class="button-row" style="margin-bottom: 1.5rem;">
+        <a href="{{ url_for('download_graph', filename=graph_file) }}" class="btn btn-ghost">Download graph</a>
+        <button type="button" class="btn btn-ghost" onclick="downloadReport('report-data', 'cfg-diff-report.json')">Download report</button>
+    </div>
+    <script type="application/json" id="report-data">{{ stats|tojson }}</script>
+
     <div class="stats-grid">
         <div class="stat-card c-g1">
             <div class="stat-value">{{ stats.g1_nodes }}</div>

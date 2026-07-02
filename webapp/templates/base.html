@@ -61,6 +61,23 @@
     </div>
     {% block scripts %}{% endblock %}
     <script>
+        // Reads a `type="application/json"` element's text, wraps it with
+        // export metadata, and saves it as a formatted .json file. Used by
+        // "Download report" buttons on the compare/identify results.
+        function downloadReport(dataElementId, filename) {
+            const data = JSON.parse(document.getElementById(dataElementId).textContent);
+            const report = Object.assign({tool: 'CFG//DIFF', exported_at: new Date().toISOString()}, data);
+            const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
         (function() {
             const toggle = document.getElementById('theme-toggle');
             toggle.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));

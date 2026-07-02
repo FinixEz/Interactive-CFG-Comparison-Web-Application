@@ -383,9 +383,13 @@
                 <div class="panel-header">
                     control flow graph
                     {% if cfg_html %}
-                    <span class="tier-legend">
-                        <span><span class="sw" style="border-color: #ff5d5d;"></span>critical</span>
-                        <span><span class="sw" style="border-color: #ffa94d;"></span>high importance</span>
+                    <span style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span class="tier-legend">
+                            <span><span class="sw" style="border-color: #ff5d5d;"></span>critical</span>
+                            <span><span class="sw" style="border-color: #ffa94d;"></span>high importance</span>
+                        </span>
+                        <a href="{{ url_for('download_graph', filename=cfg_html) }}"
+                            style="color: var(--muted); text-decoration: underline; font-weight: 500; text-transform: none;">Download</a>
                     </span>
                     {% endif %}
                 </div>

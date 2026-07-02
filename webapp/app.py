@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, flash
+from flask import Flask, render_template, request, jsonify, flash, send_from_directory, abort
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from visualize_compare import (load_cfg_json, compare_graphs, add_legend_to_html,
@@ -11,6 +11,7 @@ import networkx as nx
 from werkzeug.utils import secure_filename
 import os
 import logging
+import re
 import time
 import glob
 
@@ -332,6 +333,29 @@ def inject_cfg_interaction_js(html_path):
         return False
 
 
+_GRAPH_FILENAME_RE = re.compile(r'^(combined|cfg)_[0-9a-f]{8}\.html$')
+
+
+@app.route("/download-graph/<path:filename>")
+def download_graph(filename):
+    """
+    Force-download a generated graph HTML file with a friendly name.
+
+    The plain /static/ URL (used by the viewer <iframe>) stays inline; this
+    route sets Content-Disposition: attachment, which every browser honors
+    reliably -- unlike the client-side `download` HTML attribute, which
+    Firefox does not consistently respect for same-origin text/html
+    responses. Restricted to the exact combined_/cfg_<hex>.html filenames
+    this app generates (see build_comparison/generate_cfg_visualization),
+    so this can't be used to fetch arbitrary files from STATIC_DIR.
+    """
+    if not _GRAPH_FILENAME_RE.match(filename):
+        abort(404)
+    friendly = 'cfg-diff-graph.html' if filename.startswith('combined_') else 'cfg-inspector-graph.html'
+    if not os.path.isfile(os.path.join(STATIC_DIR, filename)):
+        abort(404)
+    return send_from_directory(STATIC_DIR, filename, as_attachment=True, download_name=friendly)
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -631,8 +655,17 @@ def identify():
             stats, graph_file = build_comparison(
                 G, G_best, target_name, f"{best['name']} (baseline)")
 
+        # Downloadable report excludes 'path' (server filesystem detail,
+        # not meant for the client) that match_against_db() attaches for
+        # the internal load_cfg_json() call above.
+        results_export = [
+            {k: r[k] for k in ('name', 'nodes', 'edges', 'score', 'matched', 'matched_pct', 'verdict')}
+            for r in results
+        ]
+
         return render_template("identify.html", baselines=baseline_summaries(),
-                               results=results, target_name=target_name,
+                               results=results, results_export=results_export,
+                               target_name=target_name,
                                target_nodes=G.number_of_nodes(),
                                target_edges=G.number_of_edges(),
                                stats=stats, graph_file=graph_file)

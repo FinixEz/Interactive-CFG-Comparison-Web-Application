@@ -63,6 +63,10 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class="button-row" style="justify-content: flex-start; margin-top: 1rem;">
+        <button type="button" class="btn btn-ghost" onclick="downloadReport('match-report-data', 'cfg-diff-match-report.json')">Download report</button>
+    </div>
+    <script type="application/json" id="match-report-data">{{ {'target': target_name, 'target_nodes': target_nodes, 'target_edges': target_edges, 'results': results_export}|tojson }}</script>
 </section>
 {% endif %}
 
@@ -112,6 +116,12 @@
             </div>
         </div>
     </div>
+
+    <div class="button-row" style="margin-top: 1.25rem;">
+        <a href="{{ url_for('download_graph', filename=graph_file) }}" class="btn btn-ghost">Download graph</a>
+        <button type="button" class="btn btn-ghost" onclick="downloadReport('comparison-report-data', 'cfg-diff-comparison-report.json')">Download report</button>
+    </div>
+    <script type="application/json" id="comparison-report-data">{{ stats|tojson }}</script>
 </section>
 {% endif %}
 

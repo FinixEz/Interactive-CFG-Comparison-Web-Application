@@ -78,6 +78,66 @@ def test_sample_comparison(client):
     assert 'combined_' in body
 
 
+def test_compare_page_has_download_buttons(client):
+    r = client.post('/', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert '/download-graph/combined_' in body
+    assert "downloadReport('report-data'" in body
+
+    m = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', body, re.S)
+    assert m, "report-data JSON blob not found"
+    data = json.loads(m.group(1))
+    assert data['filename1'] == 'Bodmasv2.json'
+    assert data['filename2'] == 'mocking.json'
+    assert 'structural_score' in data
+    assert 'top_nodes' in data
+
+
+def test_download_graph_route_forces_attachment(client):
+    r = client.post('/', data={'sample': '1'})
+    m = re.search(r'/download-graph/(combined_[0-9a-f]+\.html)', r.get_data(as_text=True))
+    assert m, "no download-graph link in the response"
+
+    dl = client.get(f'/download-graph/{m.group(1)}')
+    assert dl.status_code == 200
+    disposition = dl.headers.get('Content-Disposition', '')
+    assert 'attachment' in disposition
+    assert 'cfg-diff-graph.html' in disposition
+
+
+def test_download_graph_route_rejects_arbitrary_filenames(client):
+    # Only the app's own generated combined_/cfg_<hex>.html names are
+    # servable -- anything else (path traversal, other static assets,
+    # made-up names) must 404, not fall through to STATIC_DIR.
+    for bad in ['../app.py', '..%2F..%2Fapp.py', 'style.css',
+                'combined_deadbeef.txt', 'combined_not-hex.html',
+                'cfg_' + 'a' * 40 + '.html']:
+        assert client.get(f'/download-graph/{bad}').status_code == 404
+
+
+def test_download_graph_route_404_for_nonexistent_file(client):
+    # Well-formed name, matches the pattern, but was never generated
+    assert client.get('/download-graph/combined_deadbeef.html').status_code == 404
+
+
+def test_compare_report_json_is_safe_inside_script_tag(client):
+    # tojson must escape '<'/'>'/'&' for <script> context -- plain HTML
+    # escaping (used for the legend) is not sufficient here, since '&lt;'
+    # would still read as a literal '<' once parsed as JS/JSON text.
+    r = client.post('/', data={
+        'graph1': (_json_file(['a', 'b'], [['a', 'b']]), 'evil</script><script>x.json'),
+        'graph2': (_json_file(['a', 'c'], [['a', 'c']]), 'other.json'),
+    }, content_type='multipart/form-data')
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+
+    m = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', body, re.S)
+    assert m
+    assert '</script>' not in m.group(1)
+    data = json.loads(m.group(1))
+    assert data['filename1'] == 'evil</script><script>x.json'
+
+
 def test_inspector_sample(client):
     r = client.post('/inspect', data={'sample': '1'})
     assert r.status_code == 200
@@ -94,6 +154,12 @@ def test_inspector_cfg_iframe_has_accessible_title(client):
     r = client.post('/inspect', data={'sample': '1'})
     body = r.get_data(as_text=True)
     assert 'title="Control-flow graph visualization"' in body
+
+
+def test_inspector_has_download_link(client):
+    r = client.post('/inspect', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert '/download-graph/cfg_' in body
 
 
 def test_upload_comparison_and_legend_escaping(client):
@@ -128,6 +194,31 @@ def test_identify_match_report_meter_is_a_progressbar(client):
     body = r.get_data(as_text=True)
     assert 'role="progressbar"' in body
     assert 'aria-valuenow=' in body
+
+
+def test_identify_page_has_download_buttons(client):
+    r = client.post('/identify', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+
+    # match-report export
+    assert "downloadReport('match-report-data'" in body
+    m = re.search(r'<script type="application/json" id="match-report-data">(.*?)</script>', body, re.S)
+    assert m, "match-report-data JSON blob not found"
+    match_data = json.loads(m.group(1))
+    assert match_data['target'] == 'anthrax.asm'
+    assert len(match_data['results']) >= 1
+    # internal server filesystem path must not leak into the export
+    assert not any('path' in r for r in match_data['results'])
+    assert all('verdict' in r for r in match_data['results'])
+
+    # best-match comparison export (anthrax sample scores 'strong' -- 0 --
+    # so build_comparison runs and this section renders)
+    assert '/download-graph/combined_' in body
+    assert "downloadReport('comparison-report-data'" in body
+    m2 = re.search(r'<script type="application/json" id="comparison-report-data">(.*?)</script>', body, re.S)
+    assert m2, "comparison-report-data JSON blob not found"
+    comparison_data = json.loads(m2.group(1))
+    assert 'structural_score' in comparison_data
 
 
 def test_identify_sample_matches_anthrax_baseline(client):
