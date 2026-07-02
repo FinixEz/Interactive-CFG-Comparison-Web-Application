@@ -324,3 +324,26 @@ def test_500_handler_renders_route_specific_template():
         body, status = webapp.internal_error(Exception('boom'))
         assert status == 500
         assert 'Compare' in body
+
+
+def test_verdict_thresholds_clear_the_unrelated_pair_ceiling():
+    # Empirical basis for VERDICT_TIERS (see the comment above it in app.py
+    # and calibrate_thresholds.py): the only genuinely unrelated real-malware
+    # pairs available (theZoo has no usable same-family variants) score
+    # 1.3-4.3%, well under the 'weak' cutoff (10) -- this pins that margin
+    # as a regression, since it's the core safety property the calibration
+    # was checking for.
+    from fingerprint_db import BASELINE_DIR
+    from visualize_compare import load_cfg_json, structural_similarity
+
+    graphs = {
+        name: load_cfg_json(os.path.join(BASELINE_DIR, f'{name}.json'))
+        for name in ('anthrax', 'whore', 'relock')
+    }
+    for a, b in [('anthrax', 'whore'), ('anthrax', 'relock'), ('whore', 'relock')]:
+        score = structural_similarity(graphs[a], graphs[b])['score'] * 100
+        assert score < 10, f'{a} x {b} scored {score:.1f}%, expected well under the weak cutoff'
+        assert webapp._verdict(score) == 'none'
+
+    self_score = structural_similarity(graphs['anthrax'], graphs['anthrax'])['score'] * 100
+    assert webapp._verdict(self_score) == 'strong'

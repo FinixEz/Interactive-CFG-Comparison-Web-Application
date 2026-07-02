@@ -541,6 +541,19 @@ def inspect():
     return render_template("inspector.html")
 
 
+# Calibrated against calibrate_thresholds.py (repo root): a synthetic
+# edit-distance perturbation study over the 4 locally-available CFGs
+# (anthrax/whore/relock/Bodmasv2), cross-checked against the 3 genuinely
+# unrelated real-malware pairs the repo has (anthrax/whore/relock -- theZoo
+# has no usable same-family variant pairs, see Home/CFG Project/05 in the
+# project's Obsidian vault). Findings: the real unrelated pairs score
+# 1.3-4.3%, and these thresholds already sit with clear margin above that
+# floor while tracking where the sample graphs land under light-to-moderate
+# synthetic perturbation -- kept unchanged rather than tuned, since the data
+# didn't call for different numbers. Caveat: reliability is graph-density
+# dependent -- dense/well-connected CFGs decay out of the 'strong' band much
+# faster than sparse ones for the same edit distance, so a 'strong' verdict
+# is more fragile for large, dense graphs than small, sparse ones.
 VERDICT_TIERS = ((70, 'strong'), (30, 'related'), (10, 'weak'))
 
 
