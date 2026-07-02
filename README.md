@@ -44,7 +44,7 @@ A powerful web-based tool for visualizing and comparing Control Flow Graphs (CFG
 - **MASM Preprocessor**: Automatic handling of INCLUDE directives for MASM assembly files
 
 ### 4. **Technical Capabilities**
-- **Assembly Parsing**: Lightweight built-in parser (label/jump analysis) for x86/x86_64 and ARM64 assembly; `angr` is used offline to extract CFGs from binaries (see `convertpkltojson.py`)
+- **Assembly Parsing**: Lightweight built-in parser (label/jump analysis) for x86/x86_64 and ARM64 assembly; `angr` is used offline to extract CFGs from compiled binaries (see `binary_to_cfg.py`), never in the web app itself — see "Analyzing a compiled binary" below for why
 - **Graph Analysis**: Built on NetworkX for robust graph operations
 - **Responsive Design**: Modern, mobile-friendly interface
 - **File Upload Validation**: Secure file handling with size limits (16MB max)
@@ -78,7 +78,7 @@ pip install -r requirements-production.txt
 ```
 
 For the full toolchain including the offline `angr`-based utilities
-(`pkl.py`, `convertpkltojson.py`):
+(`binary_to_cfg.py`, `pkl.py`, `convertpkltojson.py`):
 ```bash
 pip install -r requirements.txt
 ```
@@ -150,6 +150,26 @@ The application will start on `http://localhost:5000`
    - Click on any node in the CFG to highlight the corresponding assembly code
    - Zoom and pan to explore the graph structure
 
+### Analyzing a Compiled Binary
+
+The web app itself only accepts CFG JSON or assembly source (`.json`, `.s`,
+`.asm`) — never compiled binaries. That's deliberate: extracting a CFG from
+a real binary via `angr` can take minutes and significant memory, which
+doesn't fit the web app's request/worker model (and won't run on Render's
+free tier at all — `angr`'s `z3-solver` dependency previously timed out the
+build there, which is why `requirements-production.txt` excludes it).
+Instead, run the extraction offline and upload the result:
+
+```bash
+pip install -r requirements.txt        # full toolchain, incl. angr
+python binary_to_cfg.py SAMPLE.exe     # writes SAMPLE.json
+```
+
+Then upload `SAMPLE.json` through Compare, Inspect, or register it as an
+Identify baseline, exactly like the seeded theZoo fingerprints. Use
+`--output` to control the JSON path and `--timeout` (default 300s) if a
+larger binary needs more analysis time.
+
 ## 📁 Project Structure
 
 ```
@@ -173,6 +193,7 @@ Interactive-CFG-Comparison-Web-Application/
 ├── requirements.txt            # Full Python dependencies (incl. angr utilities)
 ├── requirements-production.txt # Web application dependencies only
 ├── requirements-dev.txt        # Production deps + pytest
+├── binary_to_cfg.py            # Utility: Extract a CFG from a binary via angr
 ├── convertpkltojson.py        # Utility: Convert pickle to JSON
 ├── mockupdata.py              # Utility: Generate mock data
 ├── pkl.py                     # Utility: Visualize a pickled angr CFG
