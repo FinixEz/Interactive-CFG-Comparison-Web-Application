@@ -23,30 +23,30 @@
     <div class="container">
         <header class="console-header">
             <div class="brand">
-                <div class="brand-mark">&gt;<span class="cursor">_</span></div>
+                <div class="brand-mark" aria-hidden="true">&gt;<span class="cursor">_</span></div>
                 <div>
                     <h1>CFG<span class="slash">//</span>DIFF{% block header_suffix %}{% endblock %}</h1>
                     <p class="tagline">{% block tagline %}Compare control-flow graphs from malware samples{% endblock %}</p>
                 </div>
             </div>
-            <div class="nav-group">
-                <a href="/" class="nav-btn{% if request.path == '/' %} active{% endif %}">Compare</a>
-                <a href="/identify" class="nav-btn{% if request.path == '/identify' %} active{% endif %}">Identify</a>
-                <a href="/inspect" class="nav-btn{% if request.path == '/inspect' %} active{% endif %}">Inspect</a>
-                <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
-                    <span class="theme-icon-light">☀</span>
-                    <span class="theme-icon-dark">☾</span>
+            <nav class="nav-group" aria-label="Primary">
+                <a href="/" class="nav-btn{% if request.path == '/' %} active{% endif %}"{% if request.path == '/' %} aria-current="page"{% endif %}>Compare</a>
+                <a href="/identify" class="nav-btn{% if request.path == '/identify' %} active{% endif %}"{% if request.path == '/identify' %} aria-current="page"{% endif %}>Identify</a>
+                <a href="/inspect" class="nav-btn{% if request.path == '/inspect' %} active{% endif %}"{% if request.path == '/inspect' %} aria-current="page"{% endif %}>Inspect</a>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false">
+                    <span class="theme-icon-light" aria-hidden="true">☀</span>
+                    <span class="theme-icon-dark" aria-hidden="true">☾</span>
                 </button>
-            </div>
+            </nav>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">
-            <span>{% if category == 'success' %}✓{% else %}⚠{% endif %}</span>
+        <div class="alert alert-{{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">
+            <span aria-hidden="true">{% if category == 'success' %}✓{% else %}⚠{% endif %}</span>
             <span class="alert-text">{{ message }}</span>
-            <button class="alert-close" onclick="this.parentElement.style.display='none'">×</button>
+            <button class="alert-close" aria-label="Dismiss message" onclick="this.parentElement.style.display='none'">×</button>
         </div>
         {% endfor %}
         {% endif %}
@@ -61,11 +61,16 @@
     </div>
     {% block scripts %}{% endblock %}
     <script>
-        document.getElementById('theme-toggle').addEventListener('click', function() {
-            document.documentElement.classList.toggle('dark');
-            const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
+        (function() {
+            const toggle = document.getElementById('theme-toggle');
+            toggle.setAttribute('aria-pressed', document.documentElement.classList.contains('dark'));
+            toggle.addEventListener('click', function() {
+                document.documentElement.classList.toggle('dark');
+                const isDark = document.documentElement.classList.contains('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                toggle.setAttribute('aria-pressed', isDark);
+            });
+        })();
     </script>
 </body>
 </html>

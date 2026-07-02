@@ -13,7 +13,7 @@
             <span class="dz-tag t-g1">File under investigation</span>
             <span class="dz-hint">.json · .s · .asm</span>
             <span class="file-name" id="target-name">no file selected</span>
-            <input type="file" name="target" id="target" accept=".json,.s,.asm" required>
+            <input type="file" name="target" id="target" accept=".json,.s,.asm" required aria-label="File under investigation">
         </label>
         <div class="button-row">
             <button type="submit" class="btn btn-primary" id="submit-btn">Identify against database</button>
@@ -41,11 +41,11 @@
     <table class="imp-table">
         <thead>
             <tr>
-                <th>Baseline</th>
-                <th>Size</th>
-                <th style="min-width: 160px;">Similarity</th>
-                <th>Matched</th>
-                <th>Verdict</th>
+                <th scope="col">Baseline</th>
+                <th scope="col">Size</th>
+                <th scope="col" style="min-width: 160px;">Similarity</th>
+                <th scope="col">Matched</th>
+                <th scope="col">Verdict</th>
             </tr>
         </thead>
         <tbody>
@@ -54,7 +54,7 @@
                 <td class="node-name">{{ r.name }}</td>
                 <td>{{ r.nodes }}n / {{ r.edges }}e</td>
                 <td>
-                    <div class="meter" style="margin-bottom: 0.25rem;"><span style="width: {{ r.score }}%;"></span></div>
+                    <div class="meter" style="margin-bottom: 0.25rem;" role="progressbar" aria-label="Similarity to {{ r.name }}" aria-valuenow="{{ r.score }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ r.score }}%;"></span></div>
                     {{ r.score }}%
                 </td>
                 <td>{{ r.matched }}/{{ target_nodes }}</td>
@@ -122,7 +122,7 @@
     {% if baselines %}
     <table class="imp-table" style="margin-bottom: 1rem;">
         <thead>
-            <tr><th>Baseline</th><th>Nodes</th><th>Edges</th><th></th></tr>
+            <tr><th scope="col">Baseline</th><th scope="col">Nodes</th><th scope="col">Edges</th><th scope="col">Actions</th></tr>
         </thead>
         <tbody>
             {% for b in baselines %}
@@ -133,7 +133,7 @@
                 <td>
                     <form action="/identify" method="post" style="display:inline">
                         <input type="hidden" name="delete" value="{{ b.slug }}">
-                        <button type="submit" class="btn-del" onclick="return confirm('Delete this baseline?')">Delete</button>
+                        <button type="submit" class="btn-del" aria-label="Delete baseline {{ b.name }}" onclick="return confirm('Delete this baseline?')">Delete</button>
                     </form>
                 </td>
             </tr>

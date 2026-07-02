@@ -64,6 +64,37 @@ NAME_OVERLAP_THRESHOLD = float(os.environ.get('NAME_OVERLAP_THRESHOLD', 0.05))
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 
+# PyVis (cdn_resources='remote') loads vis-network/tom-select from cdnjs and
+# Bootstrap from jsdelivr, then embeds the actual graph data and dark-theme
+# overrides as inline <script>/<style> in the generated HTML -- so script-src
+# and style-src need 'unsafe-inline' plus both CDN hosts, or the combined
+# graph iframe renders blank. Escaping of user-controlled filenames (upload
+# names embedded in that HTML) happens separately in add_legend_to_html().
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-src 'self'; "
+    "frame-ancestors 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # SAMEORIGIN, not DENY: the compare/identify pages embed the generated
+    # graph HTML in a same-origin <iframe>, which DENY would also block.
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = _CSP
+    return response
+
 
 def cleanup_old_cfg_files(max_age_hours=1):
     """

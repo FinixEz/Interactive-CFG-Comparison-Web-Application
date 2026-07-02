@@ -24,6 +24,52 @@ def test_index_get(client):
     assert client.get('/').status_code == 200
 
 
+def test_security_headers_present(client):
+    r = client.get('/')
+    assert r.headers.get('X-Content-Type-Options') == 'nosniff'
+    assert r.headers.get('X-Frame-Options') == 'SAMEORIGIN'
+    assert r.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
+    csp = r.headers.get('Content-Security-Policy')
+    assert csp is not None
+    assert "default-src 'self'" in csp
+    assert 'cdnjs.cloudflare.com' in csp
+    assert 'cdn.jsdelivr.net' in csp
+    assert "frame-ancestors 'self'" in csp
+    assert "object-src 'none'" in csp
+
+
+def test_security_headers_on_404(client):
+    r = client.get('/this-route-does-not-exist')
+    assert r.status_code == 404
+    assert r.headers.get('X-Content-Type-Options') == 'nosniff'
+    assert r.headers.get('Content-Security-Policy') is not None
+
+
+def test_theme_toggle_has_accessible_name(client):
+    body = client.get('/').get_data(as_text=True)
+    assert 'aria-label="Toggle dark mode"' in body
+    assert 'aria-pressed=' in body
+
+
+def test_dropzone_inputs_have_accessible_names(client):
+    body = client.get('/').get_data(as_text=True)
+    assert 'aria-label="Graph 1 file"' in body
+    assert 'aria-label="Graph 2 file"' in body
+
+
+def test_similarity_meter_is_a_progressbar(client):
+    r = client.post('/', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert 'role="progressbar"' in body
+    assert 'aria-valuenow=' in body
+
+
+def test_combined_graph_iframe_has_accessible_title(client):
+    r = client.post('/', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert 'title="Combined Graph Visualization"' in body
+
+
 def test_sample_comparison(client):
     r = client.post('/', data={'sample': '1'})
     assert r.status_code == 200
@@ -42,6 +88,12 @@ def test_inspector_rejects_non_assembly(client):
     r = client.post('/inspect', data={'assembly_file': (io.BytesIO(b'{}'), 'g.json')},
                     content_type='multipart/form-data')
     assert b'Only assembly files' in r.data
+
+
+def test_inspector_cfg_iframe_has_accessible_title(client):
+    r = client.post('/inspect', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert 'title="Control-flow graph visualization"' in body
 
 
 def test_upload_comparison_and_legend_escaping(client):
@@ -64,7 +116,18 @@ def test_upload_comparison_and_legend_escaping(client):
 def test_identify_page_lists_baselines(client):
     r = client.get('/identify')
     assert r.status_code == 200
-    assert 'fingerprint database' in r.get_data(as_text=True)
+    body = r.get_data(as_text=True)
+    assert 'fingerprint database' in body
+    # baseline delete buttons must have a name-specific accessible label,
+    # not just a bare icon/word that's ambiguous outside the table row
+    assert 'aria-label="Delete baseline' in body
+
+
+def test_identify_match_report_meter_is_a_progressbar(client):
+    r = client.post('/identify', data={'sample': '1'})
+    body = r.get_data(as_text=True)
+    assert 'role="progressbar"' in body
+    assert 'aria-valuenow=' in body
 
 
 def test_identify_sample_matches_anthrax_baseline(client):

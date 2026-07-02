@@ -14,16 +14,16 @@
                 <span class="dz-tag t-g1">Graph 1</span>
                 <span class="dz-hint">.json · .s · .asm</span>
                 <span class="file-name" id="filename1">no file selected</span>
-                <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required>
+                <input type="file" name="graph1" id="graph1" accept=".json,.s,.asm" required aria-label="Graph 1 file">
             </label>
 
-            <div class="vs-badge"><span>VS</span></div>
+            <div class="vs-badge" aria-hidden="true"><span>VS</span></div>
 
             <label class="dropzone g2" for="graph2">
                 <span class="dz-tag t-g2">Graph 2</span>
                 <span class="dz-hint">.json · .s · .asm</span>
                 <span class="file-name" id="filename2">no file selected</span>
-                <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required>
+                <input type="file" name="graph2" id="graph2" accept=".json,.s,.asm" required aria-label="Graph 2 file">
             </label>
         </div>
         <div class="button-row">
@@ -53,7 +53,7 @@
                     <span>structural similarity</span>
                     <b>{{ stats.structural_score }}%</b>
                 </div>
-        <div class="meter"><span style="width: {{ stats.structural_score }}%;"></span></div>
+        <div class="meter" role="progressbar" aria-label="Structural similarity" aria-valuenow="{{ stats.structural_score }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ stats.structural_score }}%;"></span></div>
         {% if stats.match_mode == 'structure' %}
         <div class="struct-note">
             Node names barely overlap — counts below are <b>structural matches</b> (same control-flow pattern, different names).
@@ -97,10 +97,10 @@
         <table class="imp-table">
             <thead>
                 <tr>
-                    <th>Node</th>
-                    <th>Tier</th>
-                    <th>Score</th>
-                    <th>Present in</th>
+                    <th scope="col">Node</th>
+                    <th scope="col">Tier</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Present in</th>
                 </tr>
             </thead>
             <tbody>
