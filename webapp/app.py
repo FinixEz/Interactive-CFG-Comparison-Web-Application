@@ -737,6 +737,7 @@ def build_comparison(G1, G2, filename1="Graph 1", filename2="Graph 2"):
         'unique_g1_nodes': len(G1.nodes()) - common_nodes,
         'unique_g2_nodes': len(G2.nodes()) - common_nodes,
         'structural_score': round(struct['score'] * 100, 1),
+        'verdict': _verdict(round(struct['score'] * 100, 1)),
         'match_mode': match_mode,
         'critical_nodes': sum(1 for d in importance.values() if d['tier'] == 'critical'),
         'top_nodes': [

@@ -307,6 +307,61 @@ body::after {
     opacity: 0.9;
 }
 
+/* ---------- collapsed form (results present) ----------
+   After a comparison the form folds to a summary naming what was actually
+   compared, so results lead and the header stops reading "no file selected"
+   while results for two named files sit below it. */
+.form-fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    cursor: pointer;
+    list-style: none;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem;
+    margin: -0.2rem;
+}
+.form-fold > summary::-webkit-details-marker { display: none; }
+.form-fold > summary .eyebrow { margin-bottom: 0; }
+.form-fold > summary:hover .fold-cue { color: var(--accent); border-color: var(--accent); }
+
+.fold-files {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    min-width: 0;
+}
+.fold-file {
+    padding: 0.25rem 0.6rem;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fold-file.f1 { background: var(--g1-soft); color: var(--g1); border-color: color-mix(in srgb, var(--g1) 30%, transparent); }
+.fold-file.f2 { background: var(--g2-soft); color: var(--g2); border-color: color-mix(in srgb, var(--g2) 30%, transparent); }
+.fold-vs { color: var(--faint); font-size: 0.72rem; }
+
+.fold-cue {
+    margin-left: auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.8rem;
+    transition: color 0.15s, border-color 0.15s;
+}
+.form-fold[open] > summary { margin-bottom: 1.5rem; }
+.form-fold[open] .fold-cue::after { content: ' ▲'; font-size: 0.6em; }
+.form-fold:not([open]) .fold-cue::after { content: ' ▼'; font-size: 0.6em; }
+
 /* ---------- upload ---------- */
 .upload-grid {
     display: grid;
@@ -443,20 +498,80 @@ body::after {
 
 .vs-divider { font-size: 0.8rem; color: var(--faint); }
 
-/* meter */
-.struct-readout {
-    max-width: 440px;
-    margin: 0 auto 1.75rem;
+/* ---------- verdict readout ----------
+   The page's dominant element: the calibrated answer (app.py VERDICT_TIERS)
+   with the score as evidence for it, not the other way round. --tier is
+   rebound per verdict so score, meter and marker read as one signal. */
+.verdict-readout {
+    --tier: var(--faint);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--tier);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    padding: 1.5rem 1.6rem 1.35rem;
+    margin-bottom: 1.75rem;
 }
-.struct-readout .label {
-    font-family: var(--font);
-    font-size: 0.85rem;
-    color: var(--muted);
+.verdict-readout.v-strong  { --tier: var(--danger); }
+.verdict-readout.v-related { --tier: var(--accent); }
+.verdict-readout.v-weak    { --tier: var(--g1); }
+.verdict-readout.v-none    { --tier: var(--faint); }
+
+.verdict-figure {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
+    align-items: baseline;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
 }
-.struct-readout .label b { font-family: var(--font-display); color: var(--accent); font-size: 1.1rem; }
+.verdict-score {
+    font-family: var(--font-display);
+    font-size: 3.4rem;
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.03em;
+    color: var(--tier);
+    font-variant-numeric: tabular-nums;
+}
+.verdict-score .pct { font-size: 1.6rem; font-weight: 600; margin-left: 0.1em; }
+.verdict-label { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.verdict-gloss { font-size: 0.85rem; color: var(--muted); }
+/* score, chip and meter must read as one signal — override the shared
+   .chip tier palette (kept as-is for /identify) with this verdict's tier */
+.verdict-label .chip {
+    background: color-mix(in srgb, var(--tier) 12%, transparent);
+    color: var(--tier);
+    border-color: color-mix(in srgb, var(--tier) 35%, transparent);
+}
+
+/* scale: ticks mark the real VERDICT_TIERS cutoffs (10/30/70) */
+.verdict-scale { margin-bottom: 1.1rem; }
+.scale-ticks {
+    position: relative;
+    height: 1.15rem;
+    margin-top: 0.4rem;
+    font-size: 0.68rem;
+    color: var(--muted);
+}
+.scale-ticks .tick {
+    position: absolute;
+    top: 0;
+    padding-left: 0.3rem;
+    border-left: 1px solid var(--border-strong);
+    line-height: 1.15rem;
+    white-space: nowrap;
+}
+
+/* --muted, not --faint: this states a reliability limit, so it has to stay
+   readable (--faint measures ~2.7:1 on this background, under WCAG AA). */
+.verdict-caveat {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: var(--muted);
+    border-top: 1px dashed var(--border);
+    padding-top: 0.85rem;
+    margin: 0;
+}
+.verdict-caveat b { color: var(--text); font-weight: 600; }
 
 .meter {
     height: 7px;
@@ -468,9 +583,8 @@ body::after {
 .meter span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+    background: var(--tier, var(--accent));
     border-radius: 4px;
-    box-shadow: 0 0 10px var(--accent-soft);
     transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -484,6 +598,21 @@ body::after {
     margin-top: 1rem;
 }
 .struct-note b { color: var(--accent); }
+
+/* Nodes and edges are separate dimensions; each keeps its own g1|g2|common
+   triad so the three roles stay side by side at every width. */
+.stat-group { margin-bottom: 1.25rem; }
+.stat-group:last-of-type { margin-bottom: 0; }
+
+.group-label {
+    font-family: var(--font);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+}
 
 .stats-grid {
     display: grid;
@@ -520,11 +649,20 @@ body::after {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    min-width: 0;
+}
+/* filenames are arbitrary length — clip rather than break mid-word */
+.stat-label .nm {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 .stat-label::before {
     content: '';
     width: 8px; height: 8px;
     border-radius: 2px;
+    flex: none;
 }
 .stat-card.c-g1 .stat-label::before     { background: var(--g1); }
 .stat-card.c-g2 .stat-label::before     { background: var(--g2); }
@@ -538,6 +676,15 @@ body::after {
     font-size: 0.85rem;
     color: var(--muted);
     margin: -0.2rem 0 1rem;
+}
+
+/* Table scrolls inside its own container so the page body never scrolls
+   sideways (the node column can't shrink past its mono content). */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -0.4rem;
+    padding: 0 0.4rem;
 }
 
 .imp-table {
@@ -667,7 +814,6 @@ body::after {
 @media (max-width: 760px) {
     .upload-grid { grid-template-columns: 1fr; }
     .vs-badge { display: none; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .console-header { flex-direction: column; align-items: flex-start; }
     .graph-iframe { height: 380px; }
 
@@ -676,6 +822,32 @@ body::after {
         padding: 0.75rem 1.1rem;
     }
     .nav-group { gap: 0.3rem; }
+
+    /* Panels lose their generous desktop padding — at 390px it was spending
+       ~25% of the width on gutters. */
+    .upload-section, .stats-section, .visualization-section { padding: 1.5rem 1.15rem; }
+
+    /* Keep the g1|g2|common triad on one row rather than wrapping to 2-up,
+       which paired "common nodes" with "<file> edges". */
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .stat-card { padding: 0.8rem 0.65rem; }
+    .stat-value { font-size: 1.35rem; }
+    .stat-label { font-size: 0.7rem; word-break: break-word; }
+
+    .verdict-readout { padding: 1.25rem 1.15rem 1.1rem; }
+    .verdict-score { font-size: 2.8rem; }
+    .fold-cue { margin-left: 0; }
+    .fold-file { max-width: 130px; }
+
+    /* 'none' sits at 0 and 'weak' at 10% — ~30px apart here, so they collide.
+       The bar's own start already reads as zero; drop the redundant label. */
+    .scale-ticks .t-none { display: none; }
+}
+
+/* Narrow phones: the file-named stat labels stop fitting three-up. */
+@media (max-width: 400px) {
+    .stat-label { font-size: 0.65rem; }
+    .verdict-score { font-size: 2.4rem; }
 }
 
 /* ---------- drag-over ---------- */

@@ -6,8 +6,21 @@
 {% block content %}
 <!-- Upload Form -->
 <section class="upload-section">
+    {% if stats %}
+    <details class="form-fold">
+        <summary>
+            <span class="eyebrow">01 — targets</span>
+            <span class="fold-files">
+                <span class="fold-file f1">{{ stats.filename1 }}</span>
+                <span class="fold-vs">vs</span>
+                <span class="fold-file f2">{{ stats.filename2 }}</span>
+            </span>
+            <span class="fold-cue">New comparison</span>
+        </summary>
+    {% else %}
     <span class="eyebrow">01 — targets</span>
     <h2 class="sec-title">Upload graphs</h2>
+    {% endif %}
     <form action="/" method="post" enctype="multipart/form-data" id="compare-form">
         <div class="upload-grid">
             <label class="dropzone g1" for="graph1">
@@ -29,11 +42,11 @@
         <div class="button-row">
             <button type="submit" class="btn btn-primary" id="submit-btn">Compare graphs</button>
             <button type="submit" name="sample" value="1" class="btn btn-ghost">Load sample data</button>
-            {% if stats %}
-            <a href="/" class="btn btn-ghost">Compare again</a>
-            {% endif %}
         </div>
     </form>
+    {% if stats %}
+    </details>
+    {% endif %}
 </section>
 
 <!-- Statistics Display -->
@@ -42,24 +55,39 @@
     <span class="eyebrow">02 — results</span>
     <h2 class="sec-title">Comparison results</h2>
 
-    <div class="comparison-header">
-        <div class="file-badge f1">{{ stats.filename1 }}</div>
-        <div class="vs-divider">VS</div>
-        <div class="file-badge f2">{{ stats.filename2 }}</div>
+    <div class="verdict-readout v-{{ stats.verdict }}">
+        <div class="verdict-figure">
+            <div class="verdict-score">{{ stats.structural_score }}<span class="pct">%</span></div>
+            <div class="verdict-label">
+                <span class="chip {{ stats.verdict }}">{{ stats.verdict }}</span>
+                <span class="verdict-gloss">structural similarity</span>
+            </div>
+        </div>
+        <div class="verdict-scale">
+            <div class="meter" role="progressbar" aria-label="Structural similarity"
+                 aria-valuenow="{{ stats.structural_score }}" aria-valuemin="0" aria-valuemax="100"
+                 aria-valuetext="{{ stats.structural_score }}% — {{ stats.verdict }}">
+                <span style="width: {{ stats.structural_score }}%;"></span>
+            </div>
+            <div class="scale-ticks" aria-hidden="true">
+                <span class="tick t-none" style="left: 0;">none</span>
+                <span class="tick t-weak" style="left: 10%;">weak</span>
+                <span class="tick t-related" style="left: 30%;">related</span>
+                <span class="tick t-strong" style="left: 70%;">strong</span>
+            </div>
+        </div>
+        <p class="verdict-caveat">
+            Calibrated against synthetic perturbation; known-unrelated samples in this
+            repo score 1.3–4.3%. Reliability is graph-density dependent — a
+            <b>strong</b> verdict is more fragile for large, dense graphs.
+        </p>
     </div>
 
-            <div class="struct-readout">
-                <div class="label">
-                    <span>structural similarity</span>
-                    <b>{{ stats.structural_score }}%</b>
-                </div>
-        <div class="meter" role="progressbar" aria-label="Structural similarity" aria-valuenow="{{ stats.structural_score }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ stats.structural_score }}%;"></span></div>
-        {% if stats.match_mode == 'structure' %}
-        <div class="struct-note">
-            Node names barely overlap — counts below are <b>structural matches</b> (same control-flow pattern, different names).
-        </div>
-        {% endif %}
+    {% if stats.match_mode == 'structure' %}
+    <div class="struct-note">
+        Node names barely overlap — counts below are <b>structural matches</b> (same control-flow pattern, different names).
     </div>
+    {% endif %}
 
     <div class="button-row" style="margin-bottom: 1.5rem;">
         <a href="{{ url_for('download_graph', filename=graph_file) }}" class="btn btn-ghost">Download graph</a>
@@ -67,39 +95,36 @@
     </div>
     <script type="application/json" id="report-data">{{ stats|tojson }}</script>
 
-    <div class="stats-grid">
-        <div class="stat-card c-g1">
-            <div class="stat-value">{{ stats.g1_nodes }}</div>
-            <div class="stat-label">{{ stats.filename1 }} nodes</div>
-        </div>
-        <div class="stat-card c-g2">
-            <div class="stat-value">{{ stats.g2_nodes }}</div>
-            <div class="stat-label">{{ stats.filename2 }} nodes</div>
-        </div>
-        <div class="stat-card c-common">
-            <div class="stat-value">{{ stats.common_nodes }}</div>
-            <div class="stat-label">common nodes{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
-        </div>
-        <div class="stat-card c-g1">
-            <div class="stat-value">{{ stats.g1_edges }}</div>
-            <div class="stat-label">{{ stats.filename1 }} edges</div>
-        </div>
-        <div class="stat-card c-g2">
-            <div class="stat-value">{{ stats.g2_edges }}</div>
-            <div class="stat-label">{{ stats.filename2 }} edges</div>
-        </div>
-        <div class="stat-card c-common">
-            <div class="stat-value">{{ stats.common_edges }}</div>
-            <div class="stat-label">common edges{% if stats.match_mode == 'structure' %} (structural){% endif %}</div>
+    {% for group in [
+        {'kind': 'nodes', 'g1': stats.g1_nodes, 'g2': stats.g2_nodes, 'common': stats.common_nodes},
+        {'kind': 'edges', 'g1': stats.g1_edges, 'g2': stats.g2_edges, 'common': stats.common_edges}
+    ] %}
+    <div class="stat-group">
+        <h3 class="group-label">{{ group.kind }}</h3>
+        <div class="stats-grid">
+            <div class="stat-card c-g1">
+                <div class="stat-value">{{ group.g1 }}</div>
+                <div class="stat-label"><span class="nm" title="{{ stats.filename1 }}">{{ stats.filename1 }}</span></div>
+            </div>
+            <div class="stat-card c-g2">
+                <div class="stat-value">{{ group.g2 }}</div>
+                <div class="stat-label"><span class="nm" title="{{ stats.filename2 }}">{{ stats.filename2 }}</span></div>
+            </div>
+            <div class="stat-card c-common">
+                <div class="stat-value">{{ group.common }}</div>
+                <div class="stat-label"><span class="nm">common{% if stats.match_mode == 'structure' %} (structural){% endif %}</span></div>
+            </div>
         </div>
     </div>
+    {% endfor %}
 
     {% if stats.top_nodes %}
     <div class="importance-block">
         <h2 class="sec-title">Node importance</h2>
         <p class="importance-sub">
-            {{ stats.critical_nodes }} node{{ 's' if stats.critical_nodes != 1 }} classified as critical
+            {{ stats.critical_nodes }} node{{ 's' if stats.critical_nodes != 1 }} classified as critical{% if stats.top_nodes|length < stats.critical_nodes %} · showing the top {{ stats.top_nodes|length }}{% endif %}
         </p>
+        <div class="table-scroll">
         <table class="imp-table">
             <thead>
                 <tr>
@@ -120,6 +145,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
     {% endif %}
 </section>
